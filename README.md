@@ -1,2 +1,2 @@
-# The-Cat-Corner
+# Cat-Corner
 CSCI 387
