@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'role'         => $row['role'],
                     'display_name' => $row['display_name'],
                 ];
-                header('Location: /index.php'); //
+                header('Location: /index.php');
                 exit;
             }
         } catch (PDOException $e) {
@@ -56,16 +56,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><title>Login</title>
-<body> 
-<h1>Login</h1>
-<?php if ($errors): ?>
-  <ul style="color:red"><?php foreach ($errors as $e) echo "<li>".htmlspecialchars($e)."</li>"; ?></ul>
-<?php endif; ?>
-<form method="post" action="login.php" autocomplete="off">
-  <label>Username or Email <input name="identifier" required></label><br>
-  <label>Password <input type="password" name="password" required></label><br>
-  <button type="submit">Log in</button>
-</form>
-<p><a href="create_user.php">Create an account</a></p>
-</body></html>
+<html lang="en">
+<head><meta charset="utf-8" /><title>Login</title>
+  <link rel="stylesheet" href="css/style.css" type="text/css">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+<body>
+    <main class="container has-logo">
+        <div class="logo">
+    <img src="doodles/login_logo.jpg" alt="Logo Loading...">
+    </div> 
+    <h1>Login</h1>
+    <?php if ($errors): ?>
+      <ul class="error-list">
+        <?php foreach ($errors as $e): ?>
+          <li><?= htmlspecialchars($e, ENT_QUOTES, 'UTF-8') ?></li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+
+    <form method="post" action="login.php" autocomplete="off" class="form" novalidate>
+      <div class="form-group">
+        <label for="identifier">Username or Email</label>
+        <input id="identifier" name="identifier" required placeholder="you@example.com" autofocus>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" required placeholder="••••••••">
+      </div>
+
+      <button class="btn" type="submit">Log in</button>
+      <a class="link" href="create_user.php">Create an account</a>
+    </form>
+  </main>
+</body>
+</html>

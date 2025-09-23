@@ -82,21 +82,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<!-- just test basic set up -->
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><title>Create User</title>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Create User</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="css/style.css" type="text/css">
+</head>
 <body>
-<h1>Create User</h1>
-<?php if ($errors): ?>
-  <ul style="color:red"><?php foreach ($errors as $e) echo "<li>".htmlspecialchars($e)."</li>"; ?></ul>
-<?php endif; ?>
-<form method="post" action="create_user.php" autocomplete="off">
-  <label>Username <input name="username" required></label><br>
-  <label>Email <input type="email" name="email" required></label><br>
-  <label>Display name <input name="display_name"></label><br>
-  <label>Password <input type="password" name="password" required></label><br>
-  <label>confirm pass <input type="password" name="confirm-password" required></label><br>
-  <button type="submit">Create account</button>
-</form>
-<p><a href="login.php">Already have an account? Log in</a></p>
-</body></html>
+  <main class="container has-logo">
+    <div class="logo">
+      <img src="doodles/create_user_logo.jpg" alt="Logo Loading...">
+    </div>
+
+    <h1>Create User</h1>
+
+    <?php if ($errors): ?>
+      <ul class="error-list">
+        <?php foreach ($errors as $e): ?>
+          <li><?= htmlspecialchars($e, ENT_QUOTES, 'UTF-8') ?></li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+
+    <form method="post" action="create_user.php" autocomplete="off" class="form">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input id="username" name="username" required>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input id="email" type="email" name="email" required>
+      </div>
+
+      <div class="form-group">
+        <label for="display_name">Display name</label>
+        <input id="display_name" name="display_name">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" required>
+      </div>
+
+      <div class="form-group">
+        <label for="confirm-password">Confirm Password</label>
+        <input id="confirm-password" type="password" name="confirm-password" required>
+      </div>
+
+      <button type="submit" class="btn">Create account</button>
+    </form>
+
+    <p><a href="login.php" class="link">Already have an account? Log in</a></p>
+  </main>
+</body>
+</html>
+
+
+
