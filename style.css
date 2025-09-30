@@ -1,0 +1,280 @@
+/* global */
+body {
+  margin: 0;
+  font-family: 'Quicksand', sans-serif;
+  background-color: #f9f5f0;
+  color: #3b3a36;
+  line-height: 1.6;
+}
+
+/* container */
+.container {
+  max-width: 420px;
+  margin: 80px auto;
+  padding: 2rem;
+  background: #fffdf9;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  border: 1px solid #e6e0d5;
+}
+
+/* headers */
+h1 {
+  color: #5a6c57;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+}
+
+.sub {
+  color: #7a8d76;
+  margin-bottom: 1.5rem;
+  font-style: italic;
+}
+
+/* errors */
+.error-list {
+  list-style: none;
+  padding: 0.5rem 1rem;
+  margin: 0 0 1.2rem;
+  background: #fbeaea;
+  border: 1px solid #d87a7a;
+  border-radius: 8px;
+  text-align: left;
+}
+
+.error-list li {
+  padding: 0.3rem 0;
+  color: #a73e3e;
+  font-weight: 600;
+}
+
+/* form */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.form-group {
+  text-align: left;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: #3b3a36;
+}
+
+input {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid #cfd6cf;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #f5f7f5;
+  transition: border 0.2s, background 0.2s;
+}
+
+input:focus {
+  border-color: #7a8d76;
+  outline: none;
+  background: #ffffff;
+}
+
+/* buttonnzz */
+.btn {
+  background: #7a8d76;
+  color: #ffffff;
+  padding: 0.9rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.25s ease;
+}
+
+.btn:hover {
+  background: #5a6c57;
+}
+
+/* links */
+.link {
+  display: inline-block;
+  margin-top: 1rem;
+  color: #5a6c57;
+  text-decoration: none;
+  font-weight: bold;
+  transition: color 0.2s;
+}
+
+.link:hover {
+  color: #7a8d76;
+}
+
+/* container with logo */
+.container.has-logo {
+  padding-top: 1.25rem;
+}
+
+/* logo block */
+.logo {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto 0.75rem auto;
+}
+
+.logo img {
+  display: block;
+  width: 200px;
+  height: auto;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  border: 1px solid #e6e0d5;
+}
+
+/* top nav */
+.nav {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; padding: .75rem 1rem; background: #fffdf9; border-bottom: 1px solid #e6e0d5;
+}
+.nav-left, .nav-right { display: flex; align-items: center; gap: .75rem; }
+.brand { display: flex; align-items: center; gap: .5rem; text-decoration: none; color: #3b3a36; font-weight: 700; }
+.brand img { width: 36px; height: 36px; object-fit: cover; border-radius: 8px; border: 1px solid #e6e0d5; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
+.link-muted { color: #7a8d76; opacity: .85; cursor: default; }
+
+/* secondary buttons and pills */
+.btn-outline {
+  background: transparent;
+  color: #3b3a36;
+  border: 1px solid #cfd6cf;
+  border-radius: 10px;
+  padding: .75rem .9rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-block;
+}
+.btn-outline:hover { background: #f5f7f5; }
+.pill { font-size: .8rem; padding: .35rem .6rem; border: 1px solid #e6e0d5; border-radius: 999px; background: #fffdf9; color: #3b3a36; }
+
+/* homepage container override + call-to-actions */
+.container.home { max-width: 920px; }
+.cta-row { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; margin: 1rem 0 1.25rem; }
+.section-title { margin: 1.25rem 0 .5rem; color: #5a6c57; }
+
+/* cards and grid */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+.card { background: #fffdf9; border: 1px solid #e6e0d5; border-radius: 14px; padding: 1rem; text-align: left; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+.card:hover { box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
+.card-title { font-weight: 700; color: #3b3a36; margin-bottom: .25rem; }
+.muted { color: #7a8d76; }
+.card.empty { text-align: center; }
+
+/* two-column layout: left sidebar + right feed */
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 1rem;
+  max-width: 1200px;
+  margin: 1rem auto;
+  padding: 0 1rem;
+}
+
+/* sidebar */
+.sidebar {
+  background: #fffdf9;
+  border: 1px solid #e6e0d5;
+  border-radius: 14px;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.06);
+  padding: 1rem;
+  height: max-content;
+  position: sticky;
+  top: 70px; /* sits just under the sticky nav */
+}
+.sidebar-title { margin: 0 0 .5rem; color: #5a6c57; }
+.cat-list { list-style: none; margin: 0; padding: 0; }
+.cat-list li { margin: .25rem 0; }
+.cat-link {
+  display: block;
+  padding: .5rem .6rem;
+  text-decoration: none;
+  color: #3b3a36;
+  border-radius: 8px;
+}
+.cat-link:hover { background: #f5f7f5; }
+.cat-link.active { background: #eaf0ea; border: 1px solid #cfd6cf; }
+
+/* sidebar cta */
+.sidebar-cta { margin-top: .75rem; }
+.btn.full { display: block; text-align: center; }
+
+/* feed area */
+.feed .post-list { display: grid; gap: .8rem; }
+.post-card.card { text-align: left; }
+.post-head { margin-bottom: .4rem; }
+.post-title { margin: 0; }
+.post-meta { font-size: .9rem; }
+.post-actions { display: flex; gap: .5rem; margin-top: .5rem; }
+
+/* login prompt modal */
+.login-prompt {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.25);
+  display: grid; place-items: center;
+}
+.login-prompt[hidden] { display: none; }
+.login-prompt-card {
+  background: #fffdf9;
+  border: 1px solid #e6e0d5;
+  border-radius: 14px;
+  padding: 1rem;
+  width: 420px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.18);
+  text-align: center;
+}
+.login-prompt-card .row { display: flex; gap: .5rem; justify-content: center; margin-top: .75rem; }
+
+
+/* subcategory chips */
+.subcat-chips { list-style: none; padding: 0; margin: .25rem 0 0; display: flex; gap: .4rem; flex-wrap: wrap; }
+.subcat-chips .chip {
+  font-size: .85rem;
+  padding: .15rem .5rem;
+  border: 1px solid #cfd6cf;
+  border-radius: 999px;
+  background: #f5f7f5;
+  color: #3b3a36;
+}
+
+/* Bigger logo in nav */
+.nav .brand img {
+  height: 56px;   /* adjust if you want it bigger/smaller */
+  width: auto;
+}
+
+.nav .brand span {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+/* Mid-screen centered Create Post CTA */
+.feed .center-cta {
+  display: block;
+  width: min(700px, 92%);   /* long horizontal */
+  margin: 1rem auto 1.5rem; /* centered */
+  text-align: center;
+  padding: .65rem 1rem;     /* skinny pill shape */
+  font-weight: 600;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+/* Hide unused post action footer since we removed View/Comment buttons */
+.post-card .post-actions {
+  display: none !important;
+}
+
+

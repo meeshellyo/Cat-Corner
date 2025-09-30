@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
 
                 // redirect to homepage 
-                header('Location: /index.php');
+                header('Location: ./index.php');
                 exit;
             }
         } catch (PDOException $e) {
@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           <!-- username or email -->
           <div class="form-group">
             <label for="identifier">Username or Email</label>
-            <input id="identifier" name="identifier" required placeholder="your@email.com" autofocus>
+            <input id="identifier" name="identifier" required placeholder="you@example.com" autofocus>
           </div>
 
           <!-- password -->

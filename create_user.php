@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'role'         => 'registered',
                 'display_name' => $display_name,
             ];
-            header('Location: /index.php');
+            header('Location: ./index.php');
             exit;
         } catch (PDOException $e) {
             if ($e->getCode() === '23000') { // 2300 is a class for integrity constraint violations
@@ -170,7 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <button type="submit" class="btn">Create account</button>
     </form>
 
-    <p><a href="login.php" class="link">Already have an account? Log in</a></p>
+    <p><a href="./login.php" class="link">Already have an account? Log in</a></p>
   </main>
 </body>
 </html>
