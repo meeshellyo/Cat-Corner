@@ -33,7 +33,7 @@ $displayName = $user['display_name'] ?? ($user['username'] ?? null);
 // which view? home = all posts
 $selectedMain = $_GET['main'] ?? 'home';
 
-// resolve heading and main_id from db so slugs never mismatch
+// fixing heading and main_id from db
 $heading = 'Home';
 $mainId  = 0;
 
@@ -54,39 +54,48 @@ if ($selectedMain !== 'home') {
 $params = [];
 if ($selectedMain !== 'home') {
   // show posts directly under main OR via any of its subcategories
-  $params[':main_id'] = $mainId;
-  $sql = "
-    SELECT
-      p.post_id, p.title, p.body, p.created_at,
-      u.display_name, u.username,
-      GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ',') AS subcats
-    FROM post p
-    JOIN users u ON u.user_id = p.user_id
-    LEFT JOIN post_subcategory ps ON ps.post_id = p.post_id
-    LEFT JOIN subcategory s ON s.subcategory_id = ps.subcategory_id
-    LEFT JOIN main_category m ON m.main_category_id = s.main_category_id
-    WHERE p.content_status = 'live'
-      AND (p.main_category_id = :main_id OR m.main_category_id = :main_id)
-    GROUP BY p.post_id
+$params[':main_id'] = $mainId;
+$sql = "
+  SELECT p.post_id, p.title, p.body, p.created_at, u.display_name, u.username, COALESCE(sc.subcats_csv, '') AS subcats
+    FROM post p JOIN users u N u.user_id = p.user_id
+    AND u.status = 'active'
+    LEFT JOIN (
+      SELECT
+        ps.post_id,
+        GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ',') AS subcats_csv FROM post_subcategory ps JOIN subcategory s ON s.subcategory_id = ps.subcategory_id GROUP BY ps.post_id ) sc
+      ON sc.post_id = p.post_id
+      WHERE p.content_status = 'live'
+      AND (
+        p.main_category_id = :main_id
+        OR EXISTS ( SELECT * FROM post_subcategory ps2
+          JOIN subcategory s2
+            ON s2.subcategory_id = ps2.subcategory_id
+          WHERE ps2.post_id = p.post_id
+            AND s2.main_category_id = :main_id
+        )
+      )
     ORDER BY p.created_at DESC
     LIMIT 50
-  ";
+    ";
 } else {
   // home: all live posts
   $sql = "
-    SELECT
-      p.post_id, p.title, p.body, p.created_at,
-      u.display_name, u.username,
-      GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ',') AS subcats
-    FROM post p
-    JOIN users u ON u.user_id = p.user_id
-    LEFT JOIN post_subcategory ps ON ps.post_id = p.post_id
-    LEFT JOIN subcategory s ON s.subcategory_id = ps.subcategory_id
+    SELECT p.post_id, p.title, p.body, p.created_at, u.display_name, u.username, COALESCE(sc.subcats_csv, '') AS subcats
+    FROM post p JOIN users u
+      ON u.user_id = p.user_id
+     AND u.status = 'active'
+    LEFT JOIN (
+      SELECT ps.post_id,
+      GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ',') AS subcats_csv
+      FROM post_subcategory ps JOIN subcategory s
+        ON s.subcategory_id = ps.subcategory_id
+      GROUP BY ps.post_id
+    ) sc
+      ON sc.post_id = p.post_id
     WHERE p.content_status = 'live'
-    GROUP BY p.post_id
     ORDER BY p.created_at DESC
     LIMIT 50
-  ";
+    ";
 }
 
 // run

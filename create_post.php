@@ -13,11 +13,19 @@ $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $user = $_SESSION['user'] ?? null;
 if (!$user) {
-  header('Location: ./login.php');
-  exit;
+  header('Location: ./login.php'); exit;
 }
 
 function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
+
+$role   = $user['role']   ?? 'registered';
+$status = $user['status'] ?? 'active';
+$allowedRoles = ['registered', 'moderator', 'admin'];
+if ($status !== 'active' || !in_array($role, $allowedRoles, true)) {
+  http_response_code(403);
+  echo "<h2>Not allowed</h2><p>Your account can’t create posts.</p>";
+  exit;
+}
 
 // load mains
 $mainCategories = [];
@@ -44,7 +52,7 @@ try {
 // uploads
 $maxMb     = 10;
 $maxBytes  = $maxMb * 1024 * 1024;
-$uploadDir = __DIR__ . '/uploads';
+$uploadDir = '/uploads';
 $uploadUrl = 'uploads';
 if (!is_dir($uploadDir)) { @mkdir($uploadDir, 0775, true); }
 
@@ -52,44 +60,105 @@ $errors = [];
 
 // handle submit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $title       = trim($_POST['title'] ?? '');
-  $body        = trim($_POST['body'] ?? '');
-  $mainId      = (int)($_POST['main_category_id'] ?? 0);
-  $subIds      = array_map('intval', $_POST['subcategories'] ?? []);
+  $title   = trim($_POST['title'] ?? '');
+  $body    = trim($_POST['body'] ?? '');
+  $mainId  = (int)($_POST['main_category_id'] ?? 0);
+  $subIds  = array_map('intval', $_POST['subcategories'] ?? []); // optional
 
   if ($title === '') $errors[] = 'please enter a title.';
   if ($body === '')  $errors[] = 'please enter some content.';
   if ($mainId <= 0)  $errors[] = 'please pick a main category.';
 
-  // keep only subcats under the chosen main
+  // Verify chosen main exists
+  if ($mainId > 0) {
+    $chkMain = $conn->prepare("SELECT 1 FROM main_category WHERE main_category_id = :mid");
+    $chkMain->execute([':mid' => $mainId]);
+    if (!$chkMain->fetchColumn()) $errors[] = 'selected main category not found.';
+  }
+
+  // Keep only subcats under the chosen main (defense-in-depth)
   if ($subIds) {
     $map = [];
-    foreach ($allSubcats as $sc) { $map[(int)$sc['subcategory_id']] = (int)$sc['main_category_id']; }
-    $subIds = array_values(array_filter($subIds, fn($sid) => ($map[$sid] ?? 0) === $mainId));
+    foreach ($allSubcats as $sc) {
+      $map[(int)$sc['subcategory_id']] = (int)$sc['main_category_id'];
+    }
+    $subIds = array_values(array_unique(array_filter(
+      $subIds,
+      fn($sid) => ($map[$sid] ?? 0) === $mainId
+    )));
+    // Strict SQL check too
+    if ($subIds) {
+      $in   = implode(',', array_fill(0, count($subIds), '?'));
+      $vals = [...$subIds, $mainId];
+      $sql  = "SELECT COUNT(*) FROM subcategory WHERE subcategory_id IN ($in) AND main_category_id = ?";
+      $stm  = $conn->prepare($sql);
+      $stm->execute($vals);
+      if ((int)$stm->fetchColumn() !== count($subIds)) {
+        $errors[] = 'one or more selected subcategories do not belong to the chosen main category.';
+      }
+    }
+  }
+
+  // Detect whether user attempted to upload any file (media is optional)
+  $hasMediaAttempt = false;
+  if (!empty($_FILES['media_files']) && is_array($_FILES['media_files']['name'])) {
+    $count = count($_FILES['media_files']['name']);
+    for ($i = 0; $i < $count; $i++) {
+      $err = $_FILES['media_files']['error'][$i] ?? UPLOAD_ERR_NO_FILE;
+      if ($err !== UPLOAD_ERR_NO_FILE) { $hasMediaAttempt = true; break; }
+    }
+  }
+
+  // Trigger word scan (case-insensitive, word boundaries)
+  $lexiconHits = 0;
+  $firstHit    = null;
+  $haystack    = ' ' . mb_strtolower($title . ' ' . $body) . ' ';
+  foreach ($LEXICON as $w) {
+    $w = mb_strtolower($w);
+    if ($w === '') continue;
+    if (preg_match('/\b' . preg_quote($w, '/') . '\b/u', $haystack)) {
+      $lexiconHits++;
+      if ($firstHit === null) $firstHit = $w;
+    }
+  }
+
+  // Decide initial post status
+  // - media attached => pending
+  // - trigger word hit => flagged (takes precedence)
+  $postStatus = 'live';
+  if ($lexiconHits > 0) {
+    $postStatus = 'flagged';
+  } elseif ($hasMediaAttempt) {
+    $postStatus = 'pending';
   }
 
   if (!$errors) {
     try {
-      // insert post (direct main id stored here)
+      $conn->beginTransaction();
+
+      // Insert post with computed status
       $ins = $conn->prepare("
         INSERT INTO post (user_id, main_category_id, title, body, content_status)
-        VALUES (:uid, :mid, :title, :body, 'live')
+        VALUES (:uid, :mid, :title, :body, :status)
       ");
       $ins->execute([
-        ':uid'   => (int)$user['user_id'],
-        ':mid'   => $mainId,
-        ':title' => $title,
-        ':body'  => $body,
+        ':uid'    => (int)$user['user_id'],
+        ':mid'    => $mainId,
+        ':title'  => $title,
+        ':body'   => $body,
+        ':status' => $postStatus,
       ]);
       $postId = (int)$conn->lastInsertId();
 
-      // link subcats
+      // Link subcategories (optional)
       if ($postId && $subIds) {
-        $ps = $conn->prepare("INSERT INTO post_subcategory (post_id, subcategory_id) VALUES (:p, :s)");
-        foreach ($subIds as $sid) { $ps->execute([':p' => $postId, ':s' => $sid]); }
+        $ps = $conn->prepare("INSERT IGNORE INTO post_subcategory (post_id, subcategory_id) VALUES (:p, :s)");
+        foreach ($subIds as $sid) {
+          $ps->execute([':p' => $postId, ':s' => $sid]);
+        }
       }
 
-      // handle media (optional)
+      // Handle media uploads (optional)
       if (!empty($_FILES['media_files']) && is_array($_FILES['media_files']['name'])) {
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $count = count($_FILES['media_files']['name']);
@@ -101,14 +170,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
           if ($err === UPLOAD_ERR_NO_FILE) continue;
           if ($err !== UPLOAD_ERR_OK) { $errors[] = 'a file failed to upload.'; continue; }
-          if ($size > $maxBytes) { $errors[] = e($name) . ' is too large. max ' . $maxMb . ' MB.'; continue; }
+          if ($size > $maxBytes)     { $errors[] = e($name) . ' is too large. max ' . $maxMb . ' MB.'; continue; }
 
           $mime = $tmp ? ($finfo->file($tmp) ?: '') : '';
           $type = 'other';
-          if (strpos($mime, 'image/') === 0) $type = (stripos($mime, 'gif') !== false) ? 'gif' : 'image';
-          elseif (strpos($mime, 'video/') === 0) $type = 'video';
+          if (strpos($mime, 'image/') === 0) { $type = (stripos($mime, 'gif') !== false) ? 'gif' : 'image'; }
+          elseif (strpos($mime, 'video/') === 0) { $type = 'video'; }
 
-          $ext = pathinfo($name, PATHINFO_EXTENSION);
+          $ext  = pathinfo($name, PATHINFO_EXTENSION);
           $base = 'media_' . $postId . '_' . bin2hex(random_bytes(6));
           $fileName = $base . ($ext ? ('.' . preg_replace('/[^A-Za-z0-9_.-]/', '', $ext)) : '');
           $dest = $uploadDir . '/' . $fileName;
@@ -121,7 +190,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
       }
 
-      // redirect to the selected main
+      // If lexicon triggered, record a flag row (moderation queue)
+      if ($postStatus === 'flagged') {
+        $flag = $conn->prepare("
+          INSERT INTO flag (
+            post_id, trigger_source, flagged_by_id, trigger_hits, trigger_word,
+            status, moderator_id, decided_at, notes
+          ) VALUES (
+            :post_id, 'lexicon', NULL, :hits, :word,
+            'flagged', NULL, NULL, NULL
+          )
+        ");
+        $flag->execute([
+          ':post_id' => $postId,
+          ':hits'    => $lexiconHits,
+          ':word'    => $firstHit,
+        ]);
+      }
+
+      $conn->commit();
+
+      // Redirect to the selected main
       $mainSlug = '';
       foreach ($mainCategories as $mc) {
         if ((int)$mc['main_category_id'] === $mainId) { $mainSlug = $mc['slug']; break; }
@@ -131,12 +220,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       exit;
 
     } catch (Throwable $t) {
+      if ($conn->inTransaction()) $conn->rollBack();
       $errors[] = 'could not create the post.';
     }
   }
 }
 
-// js payloads
+// --- JS payloads for subcat checkboxes ------------------------------------
 $subByMain = [];
 foreach ($allSubcats as $sc) {
   $m = (int)$sc['main_category_id'];
@@ -164,7 +254,7 @@ $postedSubs = array_map('intval', $_POST['subcategories'] ?? []);
       </a>
     </div>
     <div class="nav-right">
-      <span class="pill">Signed in as <?= e($user['display_name'] ?? $user['username'] ?? 'user') ?></span>
+      <span class="pill">Signed in as <?= e($user['display_name'] ?? $user['username'] ?? 'user') ?> (<?= e($role) ?>)</span>
       <a class="btn-outline" href="logout.php">Log out</a>
     </div>
   </nav>
@@ -187,7 +277,7 @@ $postedSubs = array_map('intval', $_POST['subcategories'] ?? []);
     <form method="post" action="create_post.php" enctype="multipart/form-data" class="form" autocomplete="off">
       <div class="form-group">
         <label for="title">title</label>
-        <input id="title" name="title" required placeholder="title" value="<?= e($_POST['title'] ?? '') ?>">
+        <input id="title" name="title" required maxlength="200" placeholder="title" value="<?= e($_POST['title'] ?? '') ?>">
       </div>
 
       <div class="form-group">
@@ -214,7 +304,7 @@ $postedSubs = array_map('intval', $_POST['subcategories'] ?? []);
       <div class="form-group">
         <label for="media_files">media (images/gifs/videos) — max <?= (int)$maxMb ?>mb each</label>
         <input id="media_files" name="media_files[]" type="file" multiple accept="image/*,video/*,.gif">
-        <small class="muted">you can attach multiple files.</small>
+        <small class="muted">you can attach multiple files (optional).</small>
       </div>
 
       <button type="submit" class="btn">publish post</button>
@@ -260,7 +350,7 @@ $postedSubs = array_map('intval', $_POST['subcategories'] ?? []);
       });
     }
 
-    // init + change
+    // init + update on main change
     renderSubcats(parseInt(mainSelect.value, 10));
     mainSelect.addEventListener('change', () => {
       renderSubcats(parseInt(mainSelect.value, 10));

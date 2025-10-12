@@ -8,16 +8,6 @@ DROP TABLE IF EXISTS post;
 DROP TABLE IF EXISTS subcategory;
 DROP TABLE IF EXISTS main_category;
 DROP TABLE IF EXISTS users;
-
-
--- An index is like a lookup table the database builds behind the scenes to speed up searches.
--- Without an index → the DB has to scan every row in the table to find what you want (called a full table scan).
--- With an index → the DB jumps straight to the matching rows, like looking things up in the index at the back of a book.
-
--- In SQL, a constraint is simply a rule you apply to a column or a table that the database will always enforce.
--- It’s how you tell the database: “this column must behave in a certain way.”
-
-
 -- tables
 
 -- users
@@ -30,7 +20,7 @@ CREATE TABLE users (
   bio          TEXT,
   avatar_id    VARCHAR(255),
   status       ENUM('active','banned') NOT NULL DEFAULT 'active',
-  role         ENUM('registered', 'moderator', 'superadmin') NOT NULL DEFAULT 'registered',
+  role         ENUM('registered', 'moderator', 'admin') NOT NULL DEFAULT 'registered',
   created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -58,6 +48,7 @@ CREATE TABLE subcategory (
 CREATE TABLE post (
   post_id         INT AUTO_INCREMENT PRIMARY KEY,
   user_id         INT NOT NULL,  -- creator of post
+  main_category_id INT NOT NULL,
   title           VARCHAR(200) NOT NULL,
   body            TEXT NOT NULL,
   content_status  ENUM('live','pending','flagged','rejected','deleted') NOT NULL DEFAULT 'live',
@@ -65,7 +56,9 @@ CREATE TABLE post (
   updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX idx_post_user (user_id),
   INDEX idx_post_status (content_status),
-  CONSTRAINT fk_post_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+  INDEX inx_post_maincat (main_category_id),
+  CONSTRAINT fk_post_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  CONSTRAINT fk_post_maincat FOREIGN KEY (main_category_id) REFERENCES main_category(main_category_id) ON DELETE RESTRICT
   );
 
 -- many to many
@@ -95,54 +88,50 @@ CREATE TABLE comment (
 
 -- media attached to posts
 CREATE TABLE media (
-  media_id   INT AUTO_INCREMENT PRIMARY KEY,
-  post_id    INT NOT NULL,
-  filename   VARCHAR(255) NOT NULL,
-  type       ENUM('image','video','gif','other') NOT NULL DEFAULT 'image',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  media_id          INT AUTO_INCREMENT PRIMARY KEY,
+  post_id           INT NOT NULL,
+  filename          VARCHAR(255) NOT NULL,
+  type              ENUM('image','video','gif','other') NOT NULL DEFAULT 'image',
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  moderation_status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+  moderated_by      INT NULL,
+  moderated_at      DATETIME NULL,
+  notes             TEXT NULL,
+
   INDEX idx_media_post (post_id),
-  CONSTRAINT fk_media_post FOREIGN KEY (post_id) REFERENCES post(post_id) ON DELETE CASCADE
+  INDEX idx_media_status (moderation_status),
+  CONSTRAINT fk_media_post FOREIGN KEY (post_id) REFERENCES post(post_id) ON DELETE CASCADE,
+  CONSTRAINT fk_media_moderator FOREIGN KEY (moderated_by) REFERENCES users(user_id) ON DELETE SET NULL
 );
 
 
 -- flags raised on posts
 CREATE TABLE flag (
-  flag_id                   INT AUTO_INCREMENT PRIMARY KEY,
-  post_id                   INT NOT NULL, -- post that gets flagged
+  flag_id         INT AUTO_INCREMENT PRIMARY KEY,
+  post_id         INT NOT NULL,
 
-  trigger_source            ENUM('lexicon','manual') NOT NULL DEFAULT 'lexicon',
-  flagged_by_id             INT NULL, -- mod who manually flags
-  trigger_hits              INT NOT NULL DEFAULT 1, -- how many
-  trigger_word              VARCHAR(255) NULL, -- words that were found
+  trigger_source  ENUM('lexicon','manual') NOT NULL DEFAULT 'lexicon',
+  flagged_by_id   INT NULL,
+  trigger_hits    INT NOT NULL DEFAULT 1,
+  trigger_word    VARCHAR(255) NULL,
 
+  status          ENUM('flagged','approved','rejected') NOT NULL DEFAULT 'flagged',
+  moderator_id    INT NULL,
+  decided_at      DATETIME NULL,
 
-  status                    ENUM('flagged','approved','rejected') NOT NULL DEFAULT 'flagged',
-  moderator_id              INT NULL,   -- who decided status
-  decided_at                DATETIME NULL,
-
-  -- media stuff
-  media_status              ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
-  media_decided_by          INT NULL,      -- moderator who decided media
-  media_decided_at          DATETIME NULL,
-
-  notes                     TEXT,
-  created_at                DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  notes           TEXT,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   INDEX idx_flag_post (post_id),
   INDEX idx_flag_status (status),
-  INDEX idx_flag_media_status (media_status),
   INDEX idx_flag_final_mod (moderator_id),
   INDEX idx_flag_flagger (flagged_by_id),
 
- CONSTRAINT fk_flag_post
-    FOREIGN KEY (post_id) REFERENCES post(post_id) ON DELETE CASCADE,
-  CONSTRAINT fk_flag_final_mod
-    FOREIGN KEY (moderator_id) REFERENCES users(user_id) ON DELETE SET NULL,
-  CONSTRAINT fk_flag_flagged_by
-    FOREIGN KEY (flagged_by_id) REFERENCES users(user_id) ON DELETE SET NULL,
-  CONSTRAINT fk_flag_media_mod
-    FOREIGN KEY (media_decided_by) REFERENCES users(user_id) ON DELETE SET NULL
-    );
+  CONSTRAINT fk_flag_post FOREIGN KEY (post_id) REFERENCES post(post_id) ON DELETE CASCADE,
+  CONSTRAINT fk_flag_final_mod FOREIGN KEY (moderator_id) REFERENCES users(user_id) ON DELETE SET NULL,
+  CONSTRAINT fk_flag_flagged_by FOREIGN KEY (flagged_by_id) REFERENCES users(user_id) ON DELETE SET NULL
+);
 
 -- notifications
 CREATE TABLE notification (
