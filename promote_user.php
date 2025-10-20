@@ -61,12 +61,31 @@ function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
         <span>Cat Corner</span>
       </a>
     </div>
+
+    <div class="nav-center">
+      <a href="index.php" class="nav-link">Home</a>
+
+      <?php if (in_array($user['role'] ?? '', ['moderator', 'admin'])): ?>
+        <a href="mod_flags.php" class="nav-link">Moderation Queue</a>
+      <?php endif; ?>
+
+      <?php if (($user['role'] ?? '') === 'admin'): ?>
+        <a href="admin_logs.php" class="nav-link">Admin Logs</a>
+        <a href="promote_user.php" class="nav-link">Promote Users</a>
+      <?php endif; ?>
+    </div>
+
     <div class="nav-right">
-      <span class="pill">admin: <?= e($user['username'] ?? 'admin') ?></span>
-      <a class="btn-outline" href="logout.php">Log out</a>
+      <?php if ($user): ?>
+        <span class="pill">
+          <?= e($user['display_name'] ?? $user['username']) ?> (<?= e($user['role']) ?>)
+        </span>
+        <a class="btn-outline" href="logout.php">Log out</a>
+      <?php else: ?>
+        <a class="btn-outline" href="login.php">Sign in</a>
+      <?php endif; ?>
     </div>
   </nav>
-
   <main class="container">
     <h1>Set User Role</h1>
     <p class="sub">type a username and choose a role.</p>

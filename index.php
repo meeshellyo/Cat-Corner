@@ -1,7 +1,5 @@
 <?php
 // index.php — public feed with left sidebar + simple auth-gated actions
-// anyone can read posts; creating/commenting prompts login via small JS modal.
-
 session_start();
 
 ini_set('display_errors', '1');
@@ -33,7 +31,7 @@ $displayName = $user['display_name'] ?? ($user['username'] ?? null);
 // which view? home = all posts
 $selectedMain = $_GET['main'] ?? 'home';
 
-// fixing heading and main_id from db
+// heading + mainId
 $heading = 'Home';
 $mainId  = 0;
 
@@ -44,7 +42,6 @@ if ($selectedMain !== 'home') {
     $mainId  = (int)$row['main_category_id'];
     $heading = $row['name'];
   } else {
-    // bad slug → back to home
     $selectedMain = 'home';
     $heading = 'Home';
   }
@@ -54,48 +51,61 @@ if ($selectedMain !== 'home') {
 $params = [];
 if ($selectedMain !== 'home') {
   // show posts directly under main OR via any of its subcategories
-$params[':main_id'] = $mainId;
-$sql = "
-  SELECT p.post_id, p.title, p.body, p.created_at, u.display_name, u.username, COALESCE(sc.subcats_csv, '') AS subcats
-    FROM post p JOIN users u N u.user_id = p.user_id
-    AND u.status = 'active'
+  $params[':main_id'] = $mainId;
+  $sql = "
+    SELECT
+      p.post_id, p.title, p.body, p.created_at,
+      u.display_name, u.username,
+      COALESCE(sc.subcats_csv, '') AS subcats
+    FROM post p
+    JOIN users u
+      ON u.user_id = p.user_id
+     AND u.status = 'active'
     LEFT JOIN (
       SELECT
         ps.post_id,
-        GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ',') AS subcats_csv FROM post_subcategory ps JOIN subcategory s ON s.subcategory_id = ps.subcategory_id GROUP BY ps.post_id ) sc
-      ON sc.post_id = p.post_id
-      WHERE p.content_status = 'live'
+        GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ',') AS subcats_csv
+      FROM post_subcategory ps
+      JOIN subcategory s ON s.subcategory_id = ps.subcategory_id
+      GROUP BY ps.post_id
+    ) sc ON sc.post_id = p.post_id
+    WHERE p.content_status = 'live'
       AND (
         p.main_category_id = :main_id
-        OR EXISTS ( SELECT * FROM post_subcategory ps2
-          JOIN subcategory s2
-            ON s2.subcategory_id = ps2.subcategory_id
+        OR EXISTS (
+          SELECT 1
+          FROM post_subcategory ps2
+          JOIN subcategory s2 ON s2.subcategory_id = ps2.subcategory_id
           WHERE ps2.post_id = p.post_id
             AND s2.main_category_id = :main_id
         )
       )
     ORDER BY p.created_at DESC
     LIMIT 50
-    ";
+  ";
 } else {
   // home: all live posts
   $sql = "
-    SELECT p.post_id, p.title, p.body, p.created_at, u.display_name, u.username, COALESCE(sc.subcats_csv, '') AS subcats
-    FROM post p JOIN users u
+    SELECT
+      p.post_id, p.title, p.body, p.created_at,
+      u.display_name, u.username,
+      COALESCE(sc.subcats_csv, '') AS subcats
+    FROM post p
+    JOIN users u
       ON u.user_id = p.user_id
      AND u.status = 'active'
     LEFT JOIN (
-      SELECT ps.post_id,
-      GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ',') AS subcats_csv
-      FROM post_subcategory ps JOIN subcategory s
-        ON s.subcategory_id = ps.subcategory_id
+      SELECT
+        ps.post_id,
+        GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ',') AS subcats_csv
+      FROM post_subcategory ps
+      JOIN subcategory s ON s.subcategory_id = ps.subcategory_id
       GROUP BY ps.post_id
-    ) sc
-      ON sc.post_id = p.post_id
+    ) sc ON sc.post_id = p.post_id
     WHERE p.content_status = 'live'
     ORDER BY p.created_at DESC
     LIMIT 50
-    ";
+  ";
 }
 
 // run
@@ -119,22 +129,33 @@ $isLoggedIn = $user ? 'true' : 'false';
   <link href="css/style.css" rel="stylesheet" type="text/css">
 </head>
 <body>
-  <!-- top nav -->
   <nav class="nav" role="navigation" aria-label="Main">
     <div class="nav-left">
-      <!-- brand goes home; bigger logo per request -->
       <a class="brand" href="index.php">
         <img src="doodles/cat_corner_logo.jpg" alt="Cat Corner logo">
         <span>Cat Corner</span>
       </a>
     </div>
+
+    <div class="nav-center">
+      <a href="index.php" class="nav-link">Home</a>
+      <?php if (in_array($user['role'] ?? '', ['moderator', 'admin'])): ?>
+        <a href="mod_flags.php" class="nav-link">Moderation Queue</a>
+      <?php endif; ?>
+      <?php if (($user['role'] ?? '') === 'admin'): ?>
+        <a href="admin_logs.php" class="nav-link">Admin Logs</a>
+        <a href="promote_user.php" class="nav-link">Promote Users</a>
+      <?php endif; ?>
+    </div>
+
     <div class="nav-right">
       <?php if ($user): ?>
-        <span class="pill">Signed in as <?= e($displayName ?? 'user') ?></span>
+        <span class="pill">
+          <?= e($user['display_name'] ?? $user['username']) ?> (<?= e($user['role']) ?>)
+        </span>
         <a class="btn-outline" href="logout.php">Log out</a>
       <?php else: ?>
-        <a class="btn-outline" href="login.php">Log in</a>
-        <a class="btn" href="create_user.php">Create account</a>
+        <a class="btn-outline" href="login.php">Sign in</a>
       <?php endif; ?>
     </div>
   </nav>
@@ -146,7 +167,6 @@ $isLoggedIn = $user ? 'true' : 'false';
       <h2 class="sidebar-title">Categories</h2>
       <ul class="cat-list">
         <li>
-          <!-- CHANGED: 'Home' → 'All Posts' -->
           <a class="cat-link <?= $selectedMain==='home' ? 'active' : '' ?>" href="index.php">All Posts</a>
         </li>
         <?php foreach ($mainCategories as $mc): ?>
@@ -165,8 +185,14 @@ $isLoggedIn = $user ? 'true' : 'false';
       <h1><?= e($heading) ?></h1>
       <p class="sub">Browse recent posts. Sign in to create posts or comment.</p>
 
-      <!-- NEW: Mid-screen skinny/long Create Post CTA -->
-      <a class="btn center-cta" href="create_post.php" data-requires-auth="true">Create a Post</a>
+      <?php
+        // builds href dynamically
+        $createHref = 'create_post.php';
+        if ($selectedMain !== 'home' && $mainId > 0) {
+          $createHref .= '?main_id=' . urlencode((string)$mainId);
+        }
+      ?>
+      <a class="btn center-cta" href="<?= e($createHref) ?>" data-requires-auth="true">Create a Post</a>
 
       <?php if (!$posts): ?>
         <div class="card empty">
@@ -210,7 +236,5 @@ $isLoggedIn = $user ? 'true' : 'false';
       <?php endif; ?>
     </main>
   </div>
-  
-  <!-- login modal omitted for brevity -->
 </body>
 </html>
