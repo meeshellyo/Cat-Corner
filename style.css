@@ -319,5 +319,161 @@ tr:hover { background-color: #f7f2ea; }
   .nav-center { display: none; }
 }
 
+/* ---------- Login Page ---------- */
+.container.has-logo {
+  max-width: 400px;        /* keeps the login box compact */
+  margin: 4rem auto;
+  background-color: #fffdf9;
+  padding: 2rem;
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .06);
+}
+
+.container.has-logo h1 {
+  text-align: center;
+  color: #2f4f45;
+  margin-bottom: 1.5rem;
+}
+
+.container.has-logo .logo img {
+  max-width: 120px;        /* make the cat logo smaller */
+  height: auto;
+  display: block;
+  margin: 1.5rem auto 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .08);
+}
+
+.container.has-logo form {
+  margin-top: 1rem;
+}
+
+.container.has-logo .btn {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.container.has-logo a.link {
+  display: inline-block;
+  margin-top: .5rem;
+  text-align: center;
+}
+
+/* ---------- Subcategory checklist (Create Post) ---------- */
+.subcat-list{
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 12px;
+  align-items:center;
+}
+.subcat-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 8px;
+  border:1px solid #e6e0d5;
+  background:#fffdf9;
+  border-radius:8px;
+}
+.subcat-row input[type="checkbox"]{
+  width:16px; height:16px; margin:0;
+}
+.subcat-row label{
+  margin:0;
+  font-weight:600;
+  font-size:14px;
+}
+
+/* ---------- Title chips (inline, tiny) ---------- */
+.post-titleline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.title-chips{ display:flex; gap:6px; flex-wrap:wrap; }
+.title-chip{
+  padding:2px 8px;
+  font-size:12px;
+  border:1px solid #e6e0d5;
+  border-radius:999px;
+  background:#fff;
+  color:#3b3a36;
+}
+
+/* Feed title row: chips inline + date on right */
+.post-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.post-titleline { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+.post-date {
+  margin-left:auto;
+  color:#6f7470;         /* lighter/muted */
+  font-size:14px;        /* smaller */
+  font-weight:normal;
+}
+
+/* tiny chips next to title */
+.title-chips{ display:flex; gap:6px; flex-wrap:wrap; }
+.title-chip{
+  padding:2px 8px;
+  font-size:12px;
+  border:1px solid #e6e0d5;
+  border-radius:999px;
+  background:#fff;
+  color:#3b3a36;
+}
+
+/* make sure old, large list doesn't render in feed even if left in markup */
+.post-card .chip-list { display:none !important; }
+
+/* -----------------------------
+   Admin Logs Page Styling
+   ----------------------------- */
+.log-table-wrapper {
+  overflow: auto;
+}
+
+table.mod-log-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mod-log-table th,
+.mod-log-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  vertical-align: top;
+}
+
+.mod-log-table th {
+  font-weight: 600;
+  color: #111827;
+  background: #fafafa;
+}
+
+.muted {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.reason-col {
+  max-width: 520px;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+/* Simple colored text for actions */
+.act-approved {
+  color: #046c4e; /* green */
+}
+
+.act-rejected {
+  color: #991b1b; /* red */
+}
+
+
 
 

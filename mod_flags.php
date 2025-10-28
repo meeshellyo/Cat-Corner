@@ -41,25 +41,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->beginTransaction();
 
         if ($action === 'approve') {
-          $conn->prepare("UPDATE post SET content_status='live' WHERE post_id=:pid")->execute([':pid'=>$pid]);
-          $conn->prepare("UPDATE media SET moderation_status='approved' WHERE post_id=:pid AND moderation_status='pending'")->execute([':pid'=>$pid]);
-          // close only post-level flags (not comment flags)
+          // Update post/media + close post-level flags
+          $conn->prepare("UPDATE post SET content_status='live' WHERE post_id=:pid")
+               ->execute([':pid'=>$pid]);
+
+          $conn->prepare("
+            UPDATE media
+               SET moderation_status='approved'
+             WHERE post_id=:pid AND moderation_status='pending'
+          ")->execute([':pid'=>$pid]);
+
           $conn->prepare("
             UPDATE flag
                SET status='approved', moderator_id=:mid, decided_at=NOW()
-             WHERE post_id=:pid AND status='flagged' AND (notes IS NULL OR notes NOT LIKE 'comment%')
+             WHERE post_id=:pid
+               AND status='flagged'
+               AND (notes IS NULL OR notes NOT LIKE 'comment%')
           ")->execute([':mid'=>$mid, ':pid'=>$pid]);
+
+          // NEW: write to moderation_log
+          $conn->prepare("
+            INSERT INTO moderation_log (moderator_id, post_id, `action`, reason)
+            VALUES (:mid, :pid, 'approved', :reason)
+          ")->execute([
+            ':mid'=>$mid,
+            ':pid'=>$pid,
+            ':reason'=>($reason !== '' ? $reason : null)
+          ]);
+
           $notices[] = 'Post approved.';
         }
 
         if ($action === 'remove') {
-          $conn->prepare("UPDATE post SET content_status='rejected' WHERE post_id=:pid")->execute([':pid'=>$pid]);
-          $conn->prepare("UPDATE media SET moderation_status='rejected' WHERE post_id=:pid")->execute([':pid'=>$pid]);
+          // Update post/media + close post-level flags
+          $conn->prepare("UPDATE post SET content_status='rejected' WHERE post_id=:pid")
+               ->execute([':pid'=>$pid]);
+
+          $conn->prepare("
+            UPDATE media
+               SET moderation_status='rejected'
+             WHERE post_id=:pid
+          ")->execute([':pid'=>$pid]);
+
           $conn->prepare("
             UPDATE flag
                SET status='rejected', moderator_id=:mid, decided_at=NOW()
-             WHERE post_id=:pid AND status='flagged' AND (notes IS NULL OR notes NOT LIKE 'comment%')
+             WHERE post_id=:pid
+               AND status='flagged'
+               AND (notes IS NULL OR notes NOT LIKE 'comment%')
           ")->execute([':mid'=>$mid, ':pid'=>$pid]);
+
+          // NEW: write to moderation_log
+          $conn->prepare("
+            INSERT INTO moderation_log (moderator_id, post_id, `action`, reason)
+            VALUES (:mid, :pid, 'rejected', :reason)
+          ")->execute([
+            ':mid'=>$mid,
+            ':pid'=>$pid,
+            ':reason'=>($reason !== '' ? $reason : null)
+          ]);
+
           $notices[] = 'Post removed.';
         }
 
@@ -74,25 +115,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conn->beginTransaction();
 
         if ($action === 'approve') {
-          $conn->prepare("UPDATE comment SET content_status='live' WHERE comment_id=:cid")->execute([':cid'=>$cid]);
-          // close either note style
+          // Approve comment + close related flags
+          $conn->prepare("UPDATE comment SET content_status='live' WHERE comment_id=:cid")
+               ->execute([':cid'=>$cid]);
+
           $conn->prepare("
             UPDATE flag
                SET status='approved', moderator_id=:mid, decided_at=NOW()
-             WHERE post_id=:pid AND status='flagged'
+             WHERE post_id=:pid
+               AND status='flagged'
                AND (notes LIKE :tag OR notes='comment auto-flagged')
-          ")->execute([':mid'=>$mid, ':pid'=>$pid, ':tag'=>'comment#'.$cid.'%']);
+          ")->execute([
+            ':mid'=>$mid,
+            ':pid'=>$pid,
+            ':tag'=>'comment#'.$cid.'%'
+          ]);
+
+          // OPTIONAL NEW: log comment moderation against the parent post
+          $conn->prepare("
+            INSERT INTO moderation_log (moderator_id, post_id, `action`, reason)
+            VALUES (:mid, :pid, 'approved', :reason)
+          ")->execute([
+            ':mid'=>$mid,
+            ':pid'=>$pid,
+            ':reason'=>(
+              $reason !== '' ? ($reason.' | ') : ''
+            ).('comment#'.$cid.' approved')
+          ]);
+
           $notices[] = 'Comment approved.';
         }
 
         if ($action === 'remove') {
-          $conn->prepare("UPDATE comment SET content_status='deleted' WHERE comment_id=:cid")->execute([':cid'=>$cid]);
+          // Remove comment + close related flags
+          $conn->prepare("UPDATE comment SET content_status='deleted' WHERE comment_id=:cid")
+               ->execute([':cid'=>$cid]);
+
           $conn->prepare("
             UPDATE flag
                SET status='rejected', moderator_id=:mid, decided_at=NOW()
-             WHERE post_id=:pid AND status='flagged'
+             WHERE post_id=:pid
+               AND status='flagged'
                AND (notes LIKE :tag OR notes='comment auto-flagged')
-          ")->execute([':mid'=>$mid, ':pid'=>$pid, ':tag'=>'comment#'.$cid.'%']);
+          ")->execute([
+            ':mid'=>$mid,
+            ':pid'=>$pid,
+            ':tag'=>'comment#'.$cid.'%'
+          ]);
+
+          // OPTIONAL NEW: log comment moderation against the parent post
+          $conn->prepare("
+            INSERT INTO moderation_log (moderator_id, post_id, `action`, reason)
+            VALUES (:mid, :pid, 'rejected', :reason)
+          ")->execute([
+            ':mid'=>$mid,
+            ':pid'=>$pid,
+            ':reason'=>(
+              $reason !== '' ? ($reason.' | ') : ''
+            ).('comment#'.$cid.' removed')
+          ]);
+
           $notices[] = 'Comment removed.';
         }
 
@@ -104,6 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errors[] = 'Action failed: ' . e($t->getMessage());
   }
 }
+
 
 /* ---------------- Load queues ---------------- */
 if ($view === 'content') {
@@ -298,3 +381,4 @@ if ($view === 'content') {
   </main>
 </body>
 </html>
+
