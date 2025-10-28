@@ -1,4 +1,5 @@
 -- tables needed for cat corner
+DROP TABLE IF EXISTS moderation_log;
 DROP TABLE IF EXISTS notification;
 DROP TABLE IF EXISTS flag;
 DROP TABLE IF EXISTS media;
@@ -155,3 +156,16 @@ CREATE TABLE notification (
   CONSTRAINT fk_notif_comment FOREIGN KEY (comment_id) REFERENCES comment(comment_id) ON DELETE SET NULL,
   CONSTRAINT fk_notif_media FOREIGN KEY (media_id) REFERENCES media(media_id) ON DELETE SET NULL
 );
+
+-- for the admins to see the mod logs
+CREATE TABLE moderation_log (
+  log_id INT AUTO_INCREMENT PRIMARY KEY,
+  moderator_id INT NOT NULL,
+  post_id INT NOT NULL,
+  action ENUM('approved','rejected') NOT NULL,
+  reason TEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (moderator_id) REFERENCES users(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (post_id) REFERENCES post(post_id) ON DELETE CASCADE
+);
+

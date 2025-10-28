@@ -1,280 +1,323 @@
-/* global */
+/* =========================================================
+   Cat Corner — Classic CSS (Beige + Sage, wider content)
+   No :root, no global resets
+========================================================= */
+
+/* ---------- Base ---------- */
 body {
   margin: 0;
-  font-family: 'Quicksand', sans-serif;
-  background-color: #f9f5f0;
-  color: #3b3a36;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px;
   line-height: 1.6;
+  color: #2f312c;               /* dark neutral text */
+  background-color: #f4efe6;    /* warm muted beige page bg */
 }
 
-/* container */
-.container {
-  max-width: 420px;
-  margin: 80px auto;
-  padding: 2rem;
-  background: #fffdf9;
-  border-radius: 14px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-  text-align: center;
-  border: 1px solid #e6e0d5;
-}
-
-/* headers */
-h1 {
-  color: #5a6c57;
-  margin-bottom: 0.5rem;
-  font-weight: bold;
-}
-
-.sub {
-  color: #7a8d76;
-  margin-bottom: 1.5rem;
-  font-style: italic;
-}
-
-/* errors */
-.error-list {
-  list-style: none;
-  padding: 0.5rem 1rem;
-  margin: 0 0 1.2rem;
-  background: #fbeaea;
-  border: 1px solid #d87a7a;
-  border-radius: 8px;
-  text-align: left;
-}
-
-.error-list li {
-  padding: 0.3rem 0;
-  color: #a73e3e;
-  font-weight: 600;
-}
-
-/* form */
-.form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.2rem;
-}
-
-.form-group {
-  text-align: left;
-}
-
-label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 0.4rem;
-  color: #3b3a36;
-}
-
-input {
-  width: 100%;
-  padding: 0.7rem;
-  border: 1px solid #cfd6cf;
-  border-radius: 8px;
-  font-size: 1rem;
-  background: #f5f7f5;
-  transition: border 0.2s, background 0.2s;
-}
-
-input:focus {
-  border-color: #7a8d76;
-  outline: none;
-  background: #ffffff;
-}
-
-/* buttonnzz */
-.btn {
-  background: #7a8d76;
-  color: #ffffff;
-  padding: 0.9rem;
-  border: none;
-  border-radius: 10px;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background 0.25s ease;
-}
-
-.btn:hover {
-  background: #5a6c57;
-}
-
-/* links */
-.link {
-  display: inline-block;
-  margin-top: 1rem;
-  color: #5a6c57;
-  text-decoration: none;
-  font-weight: bold;
-  transition: color 0.2s;
-}
-
-.link:hover {
-  color: #7a8d76;
-}
-
-/* container with logo */
-.container.has-logo {
-  padding-top: 1.25rem;
-}
-
-/* logo block */
-.logo {
-  display: flex;
-  justify-content: center;
-  margin: 0 auto 0.75rem auto;
-}
-
-.logo img {
-  display: block;
-  width: 200px;
-  height: auto;
-  border-radius: 14px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-  border: 1px solid #e6e0d5;
-}
-
-/* top nav */
-.nav {
-  position: sticky; top: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 1rem; padding: .75rem 1rem; background: #fffdf9; border-bottom: 1px solid #e6e0d5;
-}
-.nav-left, .nav-right { display: flex; align-items: center; gap: .75rem; }
-.brand { display: flex; align-items: center; gap: .5rem; text-decoration: none; color: #3b3a36; font-weight: 700; }
-.brand img { width: 36px; height: 36px; object-fit: cover; border-radius: 8px; border: 1px solid #e6e0d5; box-shadow: 0 2px 6px rgba(0,0,0,.05); }
-.link-muted { color: #7a8d76; opacity: .85; cursor: default; }
-
-/* secondary buttons and pills */
-.btn-outline {
-  background: transparent;
-  color: #3b3a36;
-  border: 1px solid #cfd6cf;
-  border-radius: 10px;
-  padding: .75rem .9rem;
+h1, h2, h3, h4, h5 {
+  margin: 0 0 12px 0;
   font-weight: 700;
-  text-decoration: none;
-  display: inline-block;
+  color: #2f4f45;               /* deep sage for headings */
 }
-.btn-outline:hover { background: #f5f7f5; }
-.pill { font-size: .8rem; padding: .35rem .6rem; border: 1px solid #e6e0d5; border-radius: 999px; background: #fffdf9; color: #3b3a36; }
+p { margin: 0 0 12px 0; }
 
-/* homepage container override + call-to-actions */
-.container.home { max-width: 920px; }
-.cta-row { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; margin: 1rem 0 1.25rem; }
-.section-title { margin: 1.25rem 0 .5rem; color: #5a6c57; }
+a { color: #356a57; text-decoration: none; }
+a:hover { color: #254b40; text-decoration: underline; }
 
-/* cards and grid */
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
-.card { background: #fffdf9; border: 1px solid #e6e0d5; border-radius: 14px; padding: 1rem; text-align: left; box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
-.card:hover { box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
-.card-title { font-weight: 700; color: #3b3a36; margin-bottom: .25rem; }
-.muted { color: #7a8d76; }
-.card.empty { text-align: center; }
+/* ---------- Navigation ---------- */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 64px;
+  background-color: #fbf8f2;   /* light card tone so it blends with beige */
+  color: #2f312c;
+  border-bottom: 1px solid #e0dacd;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+}
 
-/* two-column layout: left sidebar + right feed */
+.nav a { color: #2f312c; font-weight: bold; }
+
+.nav-left,
+.nav-center,
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.nav-center {               /* keeps tabs centered */
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand img {                /* prevent giant logo */
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e0dacd;
+}
+
+/* ---------- Containers / Surfaces ---------- */
+/* Soft ivory card so it’s not stark white against beige */
+.container {
+  max-width: 1440px;          /* WIDER main container */
+  margin: 72px auto;
+  padding: 24px;
+  background-color: #fffdf9;  /* ivory */
+  border: 1px solid #e6e0d5;  /* stone */
+  border-radius: 14px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.08);
+  color: #2f312c;
+}
+
+.container.home { max-width: 1440px; }   /* ensure the Home view is wide */
+.container.narrow { max-width: 1040px; } /* detail pages still roomy */
+
+/* Optional standalone logo block inside pages (not the header) */
+.logo { text-align: center; margin: 0 0 12px 0; }
+.logo img {
+  max-width: 180px;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid #e6e0d5;
+  box-shadow: 0 6px 16px rgba(0,0,0,.08);
+}
+
+/* ---------- Two-column Layout (Categories + Main) ---------- */
 .layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
-  gap: 1rem;
-  max-width: 1200px;
-  margin: 1rem auto;
-  padding: 0 1rem;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 40px;               /* keeps a nice space between sidebar and main */
+  max-width: 1250px;
+  margin: 24px 0 24px 0;   /* no auto-centering — aligns flush left */
+  padding: 0 24px 0 24px;  /* gentle edge padding */
 }
 
-/* sidebar */
+@media (max-width: 1000px) {
+  .layout { 
+    grid-template-columns: 1fr; 
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+}
+
+/* Sidebar (Categories) */
 .sidebar {
-  background: #fffdf9;
+  background-color: #fffdf9;
+  border: 1px solid #e6e0d5;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 8px 18px rgba(0,0,0,.06);
+  position: sticky;
+  top: 76px;
+  height: auto;
+  min-height: 80vh;
+  margin-left: 0;          /* ensures it sits flush to the edge */
+}
+
+/* Sidebar title stays */
+.sidebar-title { 
+  margin: 0 0 10px 0; 
+  color: #2f4f45; 
+}
+
+/* Feed container — wider and more open */
+.feed.container.home {
+  width: 100%;
+  max-width: none;
+  background-color: #fffdf9;
   border: 1px solid #e6e0d5;
   border-radius: 14px;
-  box-shadow: 0 6px 12px rgba(0,0,0,0.06);
-  padding: 1rem;
-  height: max-content;
-  position: sticky;
-  top: 70px; /* sits just under the sticky nav */
+  padding: 32px 40px;
+  box-shadow: 0 10px 24px rgba(0,0,0,.06);
 }
-.sidebar-title { margin: 0 0 .5rem; color: #5a6c57; }
+
+
+/* Categories list */
 .cat-list { list-style: none; margin: 0; padding: 0; }
-.cat-list li { margin: .25rem 0; }
+.cat-list li { margin: 8px 0; }
 .cat-link {
   display: block;
-  padding: .5rem .6rem;
-  text-decoration: none;
-  color: #3b3a36;
-  border-radius: 8px;
+  padding: 12px 14px;              /* chunkier/longer feel */
+  border-radius: 12px;
+  color: #2f312c;
+  background-color: transparent;
 }
-.cat-link:hover { background: #f5f7f5; }
-.cat-link.active { background: #eaf0ea; border: 1px solid #cfd6cf; }
-
-/* sidebar cta */
-.sidebar-cta { margin-top: .75rem; }
-.btn.full { display: block; text-align: center; }
-
-/* feed area */
-.feed .post-list { display: grid; gap: .8rem; }
-.post-card.card { text-align: left; }
-.post-head { margin-bottom: .4rem; }
-.post-title { margin: 0; }
-.post-meta { font-size: .9rem; }
-.post-actions { display: flex; gap: .5rem; margin-top: .5rem; }
-
-/* login prompt modal */
-.login-prompt {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,.25);
-  display: grid; place-items: center;
+.cat-link:hover { background-color: #f1ede5; }
+.cat-link.active {
+  background-color: #eaf0ea;       /* pale sage */
+  border: 1px solid #d7e2d7;
 }
-.login-prompt[hidden] { display: none; }
-.login-prompt-card {
-  background: #fffdf9;
+
+/* ---------- Cards / Feed ---------- */
+.card {
+  background-color: #fffdf9;
   border: 1px solid #e6e0d5;
-  border-radius: 14px;
-  padding: 1rem;
-  width: 420px;
-  box-shadow: 0 10px 28px rgba(0,0,0,.18);
-  text-align: center;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 10px 20px rgba(0,0,0,.06);
 }
-.login-prompt-card .row { display: flex; gap: .5rem; justify-content: center; margin-top: .75rem; }
+.card:hover { box-shadow: 0 12px 24px rgba(0,0,0,.08); }
+.card-title { color: #2f4f45; margin-bottom: 6px; }
 
+.feed .post-list { display: grid; gap: 16px; }
+.post-card.card { text-align: left; }
 
-/* subcategory chips */
-.subcat-chips { list-style: none; padding: 0; margin: .25rem 0 0; display: flex; gap: .4rem; flex-wrap: wrap; }
-.subcat-chips .chip {
-  font-size: .85rem;
-  padding: .15rem .5rem;
-  border: 1px solid #cfd6cf;
-  border-radius: 999px;
-  background: #f5f7f5;
+/* Create button spacing fix (no overlap with the first card) */
+.post-head { margin-bottom: 12px; }
+.post-head .btn, .btn-create { display: inline-flex; margin-bottom: 10px; }
+.btn + .card, .btn + .post-list { margin-top: 12px; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  background-color: #6f857a;   /* sage button */
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(0,0,0,.08);
+}
+.btn:hover { background-color: #5a6c57; }
+
+.btn-outline {
+  background-color: transparent;
   color: #3b3a36;
+  border: 1px solid #cfd6cf;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: bold;
 }
+.btn-outline:hover { background-color: #f5f7f5; }
 
-/* Bigger logo in nav */
-.nav .brand img {
-  height: 56px;   /* adjust if you want it bigger/smaller */
-  width: auto;
-}
-
-.nav .brand span {
-  font-size: 1.15rem;
-  font-weight: 600;
-}
-
-/* Mid-screen centered Create Post CTA */
-.feed .center-cta {
-  display: block;
-  width: min(700px, 92%);   /* long horizontal */
-  margin: 1rem auto 1.5rem; /* centered */
-  text-align: center;
-  padding: .65rem 1rem;     /* skinny pill shape */
-  font-weight: 600;
+.btn-quiet {
+  background-color: transparent;
+  color: #5a6c57;
+  border: 1px solid #d6dcd6;
   border-radius: 999px;
-  text-decoration: none;
+  padding: 6px 10px;
+  font-weight: bold;
+}
+.btn-quiet:hover { background-color: #eef3ef; }
+
+/* ---------- Forms ---------- */
+label { display: block; font-weight: bold; margin-bottom: 6px; color: #3b3a36; }
+
+input, textarea, select {
+  width: 100%;
+  padding: 10px;
+  background-color: #f7f6f2;
+  color: #2f312c;
+  border: 1px solid #d9d4c9;
+  border-radius: 10px;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: #7a8d76;   /* sage focus */
+  background-color: #ffffff;
 }
 
-/* Hide unused post action footer since we removed View/Comment buttons */
-.post-card .post-actions {
-  display: none !important;
+/* ---------- Post Page ---------- */
+.post-page.container.narrow { max-width: 1040px; }
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
 }
+.post-actions-top { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+
+/* Subcategory chips */
+.chip-list { list-style: none; margin: 6px 0 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 2px 8px;
+  border: 1px solid #e6e0d5;
+  border-radius: 999px;
+  background-color: #fffdf9;
+  color: #3b3a36;
+  font-size: 13px;
+}
+
+/* Paragraph rhythm */
+.prose p { margin: 10px 0; }
+
+/* ---------- Comments ---------- */
+.comments { margin-top: 18px; }
+.comments > h2 {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #ebe6db;
+}
+
+.comment-list { list-style: none; margin: 0; padding: 0; }
+.comment-item {
+  position: relative;
+  background-color: #fffdf9;
+  border: 1px solid #e6e0d5;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 8px 18px rgba(0,0,0,.06);
+}
+.comment-actions { position: absolute; top: 8px; right: 8px; display: inline-flex; gap: 6px; }
+.comment-form textarea { background-color: #f7f6f2; }
+.comment-item.flagged { display: none !important; }
+
+/* ---------- Tables / Logs ---------- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  background-color: #fffdf9;
+  border: 1px solid #e6e0d5;
+  border-radius: 10px;
+}
+th, td { padding: 12px; border-bottom: 1px solid #ebe6db; text-align: left; }
+th { background-color: #faf6ee; color: #3b3a36; }
+tr:hover { background-color: #f7f2ea; }
+
+/* ---------- Alerts ---------- */
+.error-list {
+  list-style: none;
+  background-color: #fdecec;
+  border: 1px solid #d87a7a;
+  border-radius: 10px;
+  padding: 10px 15px;
+  margin-bottom: 16px;
+}
+.error-list li { color: #9b3c3c; }
+
+.notice-card {
+  border-left: 4px solid #5a6c57;
+  background-color: #eaf0ea;
+  padding: 12px;
+  border-radius: 10px;
+  color: #2f312c;
+}
+
+/* ---------- Responsive tweaks ---------- */
+@media (max-width: 900px) {
+  .post-header { flex-direction: column; }
+  .post-actions-top { align-self: flex-start; }
+}
+@media (max-width: 760px) {
+  .container { margin: 60px auto; padding: 16px; }
+  .nav-center { display: none; }
+}
+
 
 

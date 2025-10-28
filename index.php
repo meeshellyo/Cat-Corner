@@ -47,7 +47,7 @@ if ($selectedMain !== 'home') {
   }
 }
 
-// build feed query
+// build feed query (adds has_media flag for approved media)
 $params = [];
 if ($selectedMain !== 'home') {
   // show posts directly under main OR via any of its subcategories
@@ -56,7 +56,13 @@ if ($selectedMain !== 'home') {
     SELECT
       p.post_id, p.title, p.body, p.created_at,
       u.display_name, u.username,
-      COALESCE(sc.subcats_csv, '') AS subcats
+      COALESCE(sc.subcats_csv, '') AS subcats,
+      EXISTS (
+        SELECT 1
+        FROM media m
+        WHERE m.post_id = p.post_id
+          AND m.moderation_status = 'approved'
+      ) AS has_media
     FROM post p
     JOIN users u
       ON u.user_id = p.user_id
@@ -89,7 +95,13 @@ if ($selectedMain !== 'home') {
     SELECT
       p.post_id, p.title, p.body, p.created_at,
       u.display_name, u.username,
-      COALESCE(sc.subcats_csv, '') AS subcats
+      COALESCE(sc.subcats_csv, '') AS subcats,
+      EXISTS (
+        SELECT 1
+        FROM media m
+        WHERE m.post_id = p.post_id
+          AND m.moderation_status = 'approved'
+      ) AS has_media
     FROM post p
     JOIN users u
       ON u.user_id = p.user_id
@@ -127,6 +139,14 @@ $isLoggedIn = $user ? 'true' : 'false';
   <meta charset="utf-8">
   <title>Cat Corner</title>
   <link href="css/style.css" rel="stylesheet" type="text/css">
+  <style>
+    /* minimal helpers for new layout (optional; keep or move to css/style.css) */
+    .post-head { display:flex; align-items:baseline; justify-content:space-between; gap:.75rem; }
+    .post-time { color:#6b7280; font-size:.95rem; white-space:nowrap; }
+    .post-badge { display:inline-block; margin:.25rem 0 .5rem; padding:.1rem .5rem; font-size:.8rem;
+                  border:1px solid #cbd5e1; border-radius:999px; color:#334155; background:#f8fafc; }
+    .post-footer { color:#6b7280; font-size:.95rem; margin-top:.25rem; }
+  </style>
 </head>
 <body>
   <nav class="nav" role="navigation" aria-label="Main">
@@ -210,26 +230,42 @@ $isLoggedIn = $user ? 'true' : 'false';
             }
           ?>
           <article class="post-card card">
-            <header class="post-head">
-              <h3 class="post-title">
+            <!-- Header: Title — Date/Time -->
+          <header class="post-head">
+            <div class="post-titleline">
+              <h3 class="post-title" style="margin:0">
                 <a class="link" href="post.php?id=<?= (int)$p['post_id'] ?>">
                   <?= e($p['title']) ?>
                 </a>
               </h3>
-              <div class="post-meta muted">by <?= e($author) ?> · <?= e($created) ?></div>
-            </header>
 
+              <?php if (!empty($chips)): ?>
+                <div class="title-chips">
+                  <?php foreach ($chips as $chip): ?>
+                    <span class="title-chip"><?= e($chip) ?></span>
+                  <?php endforeach; ?>
+                </div>
+              <?php endif; ?>
+            </div>
+
+            <div class="post-date">
+              <?= e(date('M j, Y g:i a', strtotime($p['created_at']))) ?>
+            </div>
+          </header>
+
+
+            <!-- Optional media badge -->
+            <?php if (!empty($p['has_media'])): ?>
+              <div class="post-badge">media attached</div>
+            <?php endif; ?>
+
+            <!-- Body snippet -->
             <div class="post-body">
               <p><?= e(mb_strimwidth($p['body'] ?? '', 0, 260, '…')) ?></p>
             </div>
 
-            <?php if ($chips): ?>
-              <ul class="subcat-chips">
-                <?php foreach ($chips as $chip): ?>
-                  <li class="chip"><?= e($chip) ?></li>
-                <?php endforeach; ?>
-              </ul>
-            <?php endif; ?>
+            <!-- Footer: creator -->
+            <div class="post-footer">by <?= e($author) ?></div>
           </article>
           <?php endforeach; ?>
         </div>
@@ -238,3 +274,4 @@ $isLoggedIn = $user ? 'true' : 'false';
   </div>
 </body>
 </html>
+

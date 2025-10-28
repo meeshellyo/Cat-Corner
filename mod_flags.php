@@ -1,160 +1,183 @@
 <?php
-// mod_flags.php — moderator queue (approve / remove)
+// mod_flags.php — Moderation queue (Content + Comments)
 declare(strict_types=1);
 session_start();
 
 ini_set('display_errors', '1');
-ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
-require_once "database.php";
+require_once __DIR__ . "/database.php";
 $conn = Database::dbConnect();
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
-// -----------------------------------------------------------------------------
-// auth: must be logged in and moderator/admin
-// -----------------------------------------------------------------------------
-$user = $_SESSION['user'] ?? null;
+$user   = $_SESSION['user'] ?? null;
 if (!$user) { header('Location: ./login.php'); exit; }
-
 $role   = $user['role']   ?? 'registered';
 $status = $user['status'] ?? 'active';
 if ($status !== 'active' || !in_array($role, ['moderator','admin'], true)) {
   http_response_code(403);
-  echo "<h2>Not allowed</h2><p>Moderator access required.</p>";
+  echo "<h2>Access Denied</h2><p>Moderator privileges required.</p>";
   exit;
 }
+
+$view = ($_GET['view'] ?? 'content');
+if (!in_array($view, ['content','comments'], true)) $view = 'content';
 
 $errors = [];
 $notices = [];
 
-// -----------------------------------------------------------------------------
-// handle approve / remove actions
-// -----------------------------------------------------------------------------
+/* ---------------- Actions ---------------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $action = $_POST['action'] ?? '';
-  $postId = (int)($_POST['post_id'] ?? 0);
   $reason = trim($_POST['reason'] ?? '');
+  $mid    = (int)$user['user_id'];
 
-  if ($postId <= 0) {
-    $errors[] = 'Invalid post ID.';
-  } else {
-    try {
-      $conn->beginTransaction();
+  try {
+    if ($view === 'content') {
+      $pid = (int)($_POST['post_id'] ?? 0);
+      if ($pid > 0) {
+        $conn->beginTransaction();
 
-      $chk = $conn->prepare("SELECT content_status FROM post WHERE post_id = :pid FOR UPDATE");
-      $chk->execute([':pid' => $postId]);
-      $row = $chk->fetch(PDO::FETCH_ASSOC);
-      if (!$row) throw new RuntimeException('Post not found.');
-      if ($row['content_status'] !== 'flagged') throw new RuntimeException('Post is not flagged.');
-      // APPROVE
-      if ($action === 'approve') {
-        $conn->prepare("UPDATE post SET content_status = 'live' WHERE post_id = :pid")
-             ->execute([':pid' => $postId]);
+        if ($action === 'approve') {
+          $conn->prepare("UPDATE post SET content_status='live' WHERE post_id=:pid")->execute([':pid'=>$pid]);
+          $conn->prepare("UPDATE media SET moderation_status='approved' WHERE post_id=:pid AND moderation_status='pending'")->execute([':pid'=>$pid]);
+          // close only post-level flags (not comment flags)
+          $conn->prepare("
+            UPDATE flag
+               SET status='approved', moderator_id=:mid, decided_at=NOW()
+             WHERE post_id=:pid AND status='flagged' AND (notes IS NULL OR notes NOT LIKE 'comment%')
+          ")->execute([':mid'=>$mid, ':pid'=>$pid]);
+          $notices[] = 'Post approved.';
+        }
 
-        $conn->prepare("
-          UPDATE flag
-          SET status = 'approved',
-              moderator_id = :mod,
-              decided_at = NOW(),
-              notes = CASE
-                        WHEN COALESCE(TRIM(notes), '') = '' AND :notes <> '' THEN :notes
-                        WHEN :notes <> '' THEN CONCAT(notes, ' | ', :notes)
-                        ELSE notes
-                      END
-          WHERE post_id = :pid AND status = 'flagged'
-        ")->execute([
-          ':mod'   => (int)$user['user_id'],
-          ':pid'   => $postId,
-          ':notes' => $reason,
-        ]);
+        if ($action === 'remove') {
+          $conn->prepare("UPDATE post SET content_status='rejected' WHERE post_id=:pid")->execute([':pid'=>$pid]);
+          $conn->prepare("UPDATE media SET moderation_status='rejected' WHERE post_id=:pid")->execute([':pid'=>$pid]);
+          $conn->prepare("
+            UPDATE flag
+               SET status='rejected', moderator_id=:mid, decided_at=NOW()
+             WHERE post_id=:pid AND status='flagged' AND (notes IS NULL OR notes NOT LIKE 'comment%')
+          ")->execute([':mid'=>$mid, ':pid'=>$pid]);
+          $notices[] = 'Post removed.';
+        }
 
-        // ✅ Log moderator action
-        $conn->prepare("
-          INSERT INTO moderation_log (moderator_id, post_id, action, reason)
-          VALUES (:mod, :pid, 'approved', :reason)
-        ")->execute([
-          ':mod'    => (int)$user['user_id'],
-          ':pid'    => $postId,
-          ':reason' => $reason !== '' ? $reason : 'approved by moderator/admin'
-        ]);
-
-        $notices[] = 'Post approved.';
+        $conn->commit();
       }
-
-      // REMOVE
-      elseif ($action === 'remove') {
-        $conn->prepare("UPDATE post SET content_status = 'rejected' WHERE post_id = :pid")
-             ->execute([':pid' => $postId]);
-
-        $conn->prepare("
-          UPDATE flag
-          SET status = 'rejected',
-              moderator_id = :mod,
-              decided_at = NOW(),
-              notes = CASE
-                        WHEN COALESCE(TRIM(notes), '') = '' AND :notes <> '' THEN :notes
-                        WHEN :notes <> '' THEN CONCAT(notes, ' | ', :notes)
-                        ELSE notes
-                      END
-          WHERE post_id = :pid AND status = 'flagged'
-        ")->execute([
-          ':mod'   => (int)$user['user_id'],
-          ':pid'   => $postId,
-          ':notes' => $reason !== '' ? $reason : 'removed by moderator',
-        ]);
-
-        // Log moderator rejection
-        $conn->prepare("
-        INSERT INTO moderation_log (moderator_id, post_id, action, reason)
-        VALUES (:mod, :pid, 'rejected', :reason)
-      ")->execute([
-        ':mod'    => (int)$user['user_id'],
-        ':pid'    => $postId,
-        ':reason' => $reason !== '' ? $reason : 'removed by moderator/admin'
-      ]);
-
-        $notices[] = 'Post removed.';
-      }
-
-
-
-      else {
-        throw new RuntimeException('Unknown action.');
-      }
-
-      $conn->commit();
-    } catch (Throwable $t) {
-      if ($conn->inTransaction()) $conn->rollBack();
-      $errors[] = 'Action failed: ' . e($t->getMessage());
     }
+
+    if ($view === 'comments') {
+      $cid = (int)($_POST['comment_id'] ?? 0);
+      $pid = (int)($_POST['post_id'] ?? 0);
+      if ($cid > 0 && $pid > 0) {
+        $conn->beginTransaction();
+
+        if ($action === 'approve') {
+          $conn->prepare("UPDATE comment SET content_status='live' WHERE comment_id=:cid")->execute([':cid'=>$cid]);
+          // close either note style
+          $conn->prepare("
+            UPDATE flag
+               SET status='approved', moderator_id=:mid, decided_at=NOW()
+             WHERE post_id=:pid AND status='flagged'
+               AND (notes LIKE :tag OR notes='comment auto-flagged')
+          ")->execute([':mid'=>$mid, ':pid'=>$pid, ':tag'=>'comment#'.$cid.'%']);
+          $notices[] = 'Comment approved.';
+        }
+
+        if ($action === 'remove') {
+          $conn->prepare("UPDATE comment SET content_status='deleted' WHERE comment_id=:cid")->execute([':cid'=>$cid]);
+          $conn->prepare("
+            UPDATE flag
+               SET status='rejected', moderator_id=:mid, decided_at=NOW()
+             WHERE post_id=:pid AND status='flagged'
+               AND (notes LIKE :tag OR notes='comment auto-flagged')
+          ")->execute([':mid'=>$mid, ':pid'=>$pid, ':tag'=>'comment#'.$cid.'%']);
+          $notices[] = 'Comment removed.';
+        }
+
+        $conn->commit();
+      }
+    }
+  } catch (Throwable $t) {
+    if ($conn->inTransaction()) $conn->rollBack();
+    $errors[] = 'Action failed: ' . e($t->getMessage());
   }
 }
 
-// -----------------------------------------------------------------------------
-// load flagged posts
-// -----------------------------------------------------------------------------
-$flagged = [];
-try {
-  $q = $conn->query("
-  SELECT
-    p.post_id, p.title, p.body, p.created_at, p.content_status,
-    u.username, u.display_name,
-    mc.name AS main_name, mc.slug AS main_slug,
-    f.flag_id, f.trigger_source, f.trigger_hits, f.trigger_word, f.created_at AS flagged_at
-  FROM post p
-  JOIN users u ON u.user_id = p.user_id
-  LEFT JOIN main_category mc ON mc.main_category_id = p.main_category_id
-  LEFT JOIN flag f ON f.post_id = p.post_id AND f.status = 'flagged'
-  WHERE p.content_status = 'flagged'
-  ORDER BY COALESCE(f.created_at, p.created_at) DESC
-  LIMIT 100
-");
-  $flagged = $q->fetchAll(PDO::FETCH_ASSOC) ?: [];
-} catch (PDOException $e) {
-  $errors[] = 'Failed to load flagged posts.';
+/* ---------------- Load queues ---------------- */
+if ($view === 'content') {
+  // Only post-level flags: (notes IS NULL OR NOT LIKE 'comment%')
+  $stmt = $conn->query("
+    SELECT DISTINCT
+      p.post_id, p.title, p.body, p.created_at, p.content_status,
+      u.username, u.display_name,
+      f.trigger_hits, f.trigger_word
+    FROM post p
+    JOIN users u ON u.user_id = p.user_id
+    LEFT JOIN flag f
+      ON f.post_id = p.post_id
+     AND f.status = 'flagged'
+     AND (f.notes IS NULL OR f.notes NOT LIKE 'comment%')
+    LEFT JOIN media m
+      ON m.post_id = p.post_id
+     AND m.moderation_status = 'pending'
+    WHERE p.content_status = 'flagged'
+       OR m.media_id IS NOT NULL
+       OR f.flag_id IS NOT NULL
+    ORDER BY p.created_at DESC
+  ");
+  $posts = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+  // pending media (thumbnails) for each post
+  $pendingByPost = [];
+  if ($posts) {
+    $ids = array_map(static fn($r)=>(int)$r['post_id'], $posts);
+    $in  = implode(',', array_fill(0, count($ids), '?'));
+    $ms  = $conn->prepare("
+      SELECT media_id, post_id, filename, type
+      FROM media
+      WHERE moderation_status='pending' AND post_id IN ($in)
+      ORDER BY media_id ASC
+    ");
+    $ms->execute($ids);
+    foreach ($ms->fetchAll(PDO::FETCH_ASSOC) as $m) {
+      $pendingByPost[(int)$m['post_id']][] = $m;
+    }
+  }
+} else {
+  // Flagged comments + look up their trigger info (supports both note styles)
+  $stmt = $conn->query("
+    SELECT
+      c.comment_id, c.post_id, c.body, c.created_at,
+      u.username, u.display_name,
+      -- pull trigger info from matching flag row if present
+      (
+        SELECT f.trigger_hits
+          FROM flag f
+         WHERE f.post_id = c.post_id
+           AND f.status = 'flagged'
+           AND (f.notes LIKE CONCAT('comment#', c.comment_id, '%')
+                OR f.notes = 'comment auto-flagged')
+         ORDER BY f.flag_id DESC
+         LIMIT 1
+      ) AS trig_hits,
+      (
+        SELECT f.trigger_word
+          FROM flag f
+         WHERE f.post_id = c.post_id
+           AND f.status = 'flagged'
+           AND (f.notes LIKE CONCAT('comment#', c.comment_id, '%')
+                OR f.notes = 'comment auto-flagged')
+         ORDER BY f.flag_id DESC
+         LIMIT 1
+      ) AS trig_word
+    FROM comment c
+    JOIN users u ON u.user_id = c.user_id
+    WHERE c.content_status='flagged'
+    ORDER BY c.created_at DESC
+  ");
+  $comments = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 }
 ?>
 <!doctype html>
@@ -162,93 +185,115 @@ try {
 <head>
   <meta charset="utf-8">
   <title>Moderation Queue — Cat Corner</title>
-    <link href="css/style.css" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .pending-media-grid{display:flex;flex-wrap:wrap;gap:.5rem;margin:.5rem 0}
+    .pending-media-grid img,.pending-media-grid video{max-width:220px;border-radius:8px;display:block}
+    .actions{display:flex;gap:.5rem;align-items:center}
+    .muted{color:#6b7280}
+    .trigger-info{color:#b03030;font-weight:bold;margin:.25rem 0}
+    .subtabs a{margin-right:.75rem}
+  </style>
 </head>
 <body>
-    <nav class="nav" role="navigation" aria-label="Main">
+  <nav class="nav">
     <div class="nav-left">
       <a class="brand" href="index.php">
         <img src="doodles/cat_corner_logo.jpg" alt="Cat Corner logo">
         <span>Cat Corner</span>
       </a>
     </div>
-
     <div class="nav-center">
       <a href="index.php" class="nav-link">Home</a>
-
-      <?php if (in_array($user['role'] ?? '', ['moderator', 'admin'])): ?>
-        <a href="mod_flags.php" class="nav-link">Moderation Queue</a>
-      <?php endif; ?>
-
-      <?php if (($user['role'] ?? '') === 'admin'): ?>
+      <a href="mod_flags.php" class="nav-link active">Moderation Queue</a>
+      <?php if ($role === 'admin'): ?>
         <a href="admin_logs.php" class="nav-link">Admin Logs</a>
         <a href="promote_user.php" class="nav-link">Promote Users</a>
       <?php endif; ?>
     </div>
-
     <div class="nav-right">
-      <?php if ($user): ?>
-        <span class="pill">
-          <?= e($user['display_name'] ?? $user['username']) ?> (<?= e($user['role']) ?>)
-        </span>
-        <a class="btn-outline" href="logout.php">Log out</a>
-      <?php else: ?>
-        <a class="btn-outline" href="login.php">Sign in</a>
-      <?php endif; ?>
+      <span class="pill"><?= e($user['display_name'] ?? $user['username']) ?> (<?= e($role) ?>)</span>
+      <a class="btn-outline" href="logout.php">Log out</a>
     </div>
-  </nav> 
+  </nav>
+
   <main class="container mod-wrap">
     <div class="mod-head">
       <h1>Moderation Queue</h1>
-      <span class="badge badge-flag"><?= count($flagged) ?> flagged</span>
+      <div class="subtabs">
+        <a href="mod_flags.php?view=content"  class="<?= $view==='content'?'active-tab':'' ?>">Content</a>
+        <a href="mod_flags.php?view=comments" class="<?= $view==='comments'?'active-tab':'' ?>">Comments</a>
+      </div>
     </div>
-    <p class="sub">Review flagged posts. Approve to publish, or Remove to hide permanently.</p>
+    <p class="sub">Review flagged items. Approve to publish, or Remove to hide permanently.</p>
 
     <?php if ($errors): ?>
-      <div class="card error-card">
-        <strong>Errors</strong>
-        <ul><?php foreach ($errors as $er): ?><li><?= e($er) ?></li><?php endforeach; ?></ul>
-      </div>
+      <div class="card error-card"><ul><?php foreach ($errors as $er): ?><li><?= e($er) ?></li><?php endforeach; ?></ul></div>
     <?php endif; ?>
-
     <?php if ($notices): ?>
-      <div class="card notice-card">
-        <?php foreach ($notices as $n): ?><p><?= e($n) ?></p><?php endforeach; ?>
-      </div>
+      <div class="card notice-card"><?php foreach ($notices as $n): ?><p><?= e($n) ?></p><?php endforeach; ?></div>
     <?php endif; ?>
 
-    <?php if (!$flagged): ?>
-      <div class="card flag-card"><strong>No flagged posts.</strong><p>All clear!</p></div>
-    <?php else: ?>
-      <div class="queue">
-        <?php foreach ($flagged as $row): ?>
-          <?php
-            $author = $row['display_name'] ?: $row['username'] ?: 'anonymous';
-            $created = date('M j, Y g:i a', strtotime($row['created_at']));
-            $flaggedAt = $row['flagged_at'] ? date('M j, Y g:i a', strtotime($row['flagged_at'])) : '—';
-            $excerpt = mb_strimwidth((string)$row['body'], 0, 360, '…');
-          ?>
+    <?php if ($view === 'content'): ?>
+      <?php if (empty($posts)): ?>
+        <div class="card flag-card"><strong>No posts need review.</strong></div>
+      <?php else: ?>
+        <?php foreach ($posts as $row): ?>
+          <?php $pid = (int)$row['post_id']; ?>
           <article class="card flag-card">
-            <h3><a href="post.php?id=<?= (int)$row['post_id'] ?>" target="_blank"><?= e($row['title'] ?: '[no title]') ?></a></h3>
-            <div class="meta">
-              by <?= e($author) ?> · <?= e($created) ?>
-              <?php if (!empty($row['main_slug'])): ?>
-                · in <a href="index.php?main=<?= e($row['main_slug']) ?>"><?= e($row['main_name'] ?? 'category') ?></a>
-              <?php endif; ?>
-              <?php if (!empty($row['trigger_word'])): ?>
-                · trigger: “<?= e($row['trigger_word']) ?>”
-              <?php endif; ?>
-            </div>
-            <p><?= e($excerpt) ?></p>
+            <h3><a href="post.php?id=<?= $pid ?>" target="_blank"><?= e($row['title'] ?: '[no title]') ?></a></h3>
+
+            <?php if (!empty($row['trigger_word'])): ?>
+              <div class="trigger-info">TriggerHit: <?= (int)$row['trigger_hits'] ?> | TriggerWord: <?= e($row['trigger_word']) ?></div>
+            <?php endif; ?>
+
+            <p><?= e(mb_strimwidth($row['body'] ?? '', 0, 360, '…')) ?></p>
+
+            <?php if (!empty($pendingByPost[$pid])): ?>
+              <div class="pending-media-grid">
+                <?php foreach ($pendingByPost[$pid] as $m): ?>
+                  <?php if ($m['type'] === 'video'): ?>
+                    <video controls preload="metadata"><source src="<?= e($m['filename']) ?>" type="video/mp4"></video>
+                  <?php else: ?>
+                    <img src="<?= e($m['filename']) ?>" alt="pending media">
+                  <?php endif; ?>
+                <?php endforeach; ?>
+              </div>
+            <?php endif; ?>
+
             <form method="post" class="actions">
-              <input type="hidden" name="post_id" value="<?= (int)$row['post_id'] ?>">
-              <input type="text" name="reason" placeholder="Optional note">
+              <input type="hidden" name="post_id" value="<?= $pid ?>">
+              <input type="text"   name="reason"  placeholder="Optional note">
               <button name="action" value="approve" class="btn">Approve</button>
-              <button name="action" value="remove" class="btn-outline">Remove</button>
+              <button name="action" value="remove"  class="btn-outline">Remove</button>
             </form>
           </article>
         <?php endforeach; ?>
-      </div>
+      <?php endif; ?>
+    <?php else: /* comments */ ?>
+      <?php if (empty($comments)): ?>
+        <div class="card flag-card"><strong>No flagged comments.</strong></div>
+      <?php else: ?>
+        <?php foreach ($comments as $c): ?>
+          <article class="card flag-card">
+            <h3>Comment on <a href="post.php?id=<?= (int)$c['post_id'] ?>" target="_blank">post #<?= (int)$c['post_id'] ?></a></h3>
+
+            <?php if (!empty($c['trig_word'])): ?>
+              <div class="trigger-info">TriggerHit: <?= (int)$c['trig_hits'] ?> | TriggerWord: <?= e($c['trig_word']) ?></div>
+            <?php endif; ?>
+
+            <p><?= e(mb_strimwidth($c['body'], 0, 360, '…')) ?></p>
+
+            <form method="post" class="actions">
+              <input type="hidden" name="comment_id" value="<?= (int)$c['comment_id'] ?>">
+              <input type="hidden" name="post_id"    value="<?= (int)$c['post_id'] ?>">
+              <input type="text"   name="reason"     placeholder="Optional note">
+              <button name="action" value="approve" class="btn">Approve</button>
+              <button name="action" value="remove"  class="btn-outline">Remove</button>
+            </form>
+          </article>
+        <?php endforeach; ?>
+      <?php endif; ?>
     <?php endif; ?>
   </main>
 </body>
