@@ -6,9 +6,8 @@ ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
 
-require_once __DIR__ . "/database.php";
+require_once "database.php";
 
-/* ---------- helpers ---------- */
 function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 function redirect(string $url): never { header("Location: $url"); exit; }
 
@@ -34,7 +33,6 @@ function scan_lexicon(array $terms, string $text): array {
   return [$hits, $first];
 }
 
-/* ---------- boot ---------- */
 $conn = Database::dbConnect();
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -94,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
   if ($action === 'delete_comment') {
-    $cid = (int)($_POST['comment_id'] ?? 0);
+    $cid = (int)$_POST['comment_id'] ?? 0;
     if ($cid > 0) {
       // only owner OR admin
       $own = $conn->prepare("SELECT user_id FROM comment WHERE comment_id=:cid AND post_id=:pid");
@@ -193,7 +191,14 @@ $comments = $cmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     </div>
     <div class="nav-center">
       <a href="index.php" class="nav-link">Home</a>
-      <?php if ($isMod || $isAdmin): ?><a href="mod_flags.php" class="nav-link">Moderation Queue</a><?php endif; ?>
+
+      <?php if ($loggedIn && in_array($userRole, ['registered', 'moderator', 'admin'], true)): ?>
+        <a href="my_reviews.php" class="nav-link">My Reviews</a>
+      <?php endif; ?>
+
+      <?php if ($isMod || $isAdmin): ?>
+        <a href="mod_flags.php" class="nav-link">Moderation Queue</a>
+      <?php endif; ?>
       <?php if ($isAdmin): ?>
         <a href="admin_logs.php" class="nav-link">Admin Logs</a>
         <a href="promote_user.php" class="nav-link">Promote Users</a>
@@ -206,6 +211,7 @@ $comments = $cmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
       <?php else: ?>
         <a class="btn-outline" href="login.php">Sign in</a>
       <?php endif; ?>
+      <a href="about_us.php" class="nav-link">About Us</a>
     </div>
   </nav>
 
@@ -226,14 +232,16 @@ $comments = $cmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
           </div>
 
           <div class="meta muted">
-            by <?= e($post['display_name'] ?? $post['username'] ?? 'anonymous') ?> ·
-            <?= e(date('M j, Y g:i a', strtotime($post['created_at']))) ?>
+            by
+            <a href="profile.php?id=<?= (int)$post['user_id'] ?>">
+              <?= e($post['display_name'] ?? $post['username'] ?? 'anonymous') ?>
+            </a>
+            · <?= e(date('M j, Y g:i a', strtotime($post['created_at']))) ?>
             <?php if (!empty($post['main_slug'])): ?>
               · in <a href="index.php?main=<?= e($post['main_slug']) ?>"><?= e($post['main_name'] ?? 'Category') ?></a>
             <?php endif; ?>
           </div>
         </div>
-
 
         <div class="post-actions-top">
           <?php if ($isPostOwner || $isAdmin): ?>
@@ -299,7 +307,11 @@ $comments = $cmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
             <?php $canFlag   = $isMod || $isAdmin; ?>
             <li class="card comment-item">
               <div class="meta">
-                <strong><?= e($c['display_name'] ?? $c['username'] ?? 'user') ?></strong>
+                <strong>
+                  <a href="profile.php?id=<?= (int)$c['user_id'] ?>">
+                    <?= e($c['display_name'] ?? $c['username'] ?? 'user') ?>
+                  </a>
+                </strong>
                 · <?= e(date('M j, Y g:i a', strtotime($c['created_at']))) ?>
               </div>
               <p><?= nl2br(e($c['body'])) ?></p>

@@ -14,9 +14,6 @@ $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
-// ---------------------------------------------------------------------------
-// Auth
-// ---------------------------------------------------------------------------
 $user = $_SESSION['user'] ?? null;
 if (!$user) { header('Location: ./login.php'); exit; }
 $role   = $user['role']   ?? 'registered';
@@ -28,9 +25,6 @@ if ($status !== 'active' || !in_array($role, $allowedRoles, true)) {
   exit;
 }
 
-// ---------------------------------------------------------------------------
-// Data for selects
-// ---------------------------------------------------------------------------
 $mainCategories = [];
 try {
   $stmt = $conn->query("SELECT main_category_id, name, slug FROM main_category ORDER BY name");
@@ -59,9 +53,6 @@ if (isset($_GET['main_id']) && ctype_digit($_GET['main_id'])) {
   if ($row = $chk->fetch(PDO::FETCH_ASSOC)) $prefillMainId = (int)$row['main_category_id'];
 }
 
-// ---------------------------------------------------------------------------
-// Lexicon (optional word list at ./bad_words.txt)
-// ---------------------------------------------------------------------------
 $LEXICON = [];
 $lexiconPath = __DIR__ . '/bad_words.txt';
 if (is_file($lexiconPath)) {
@@ -88,7 +79,7 @@ function scanLexicon(array $terms, string $text): array {
   return [$hits, $first];
 }
 
-// Helpful message for PHP upload errors
+// messages for PHP upload errors
 function uploadErrorMessage(int $code): string {
   return match ($code) {
     UPLOAD_ERR_INI_SIZE   => 'The uploaded file exceeds the server limit (upload_max_filesize).',
@@ -102,7 +93,6 @@ function uploadErrorMessage(int $code): string {
   };
 }
 
-// ---------------------------------------------------------------------------
 $errors = [];
 $subByMain = [];
 foreach ($allSubcats as $sc) {
@@ -115,9 +105,6 @@ if ($defaultMainId <= 0 && $prefillMainId) $defaultMainId = $prefillMainId;
 if ($defaultMainId <= 0 && $mainCategories) $defaultMainId = (int)$mainCategories[0]['main_category_id'];
 $postedSubs = array_map('intval', $_POST['subcategories'] ?? []);
 
-// ---------------------------------------------------------------------------
-// Handle POST
-// ---------------------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $title   = trim($_POST['title'] ?? '');
   $body    = trim($_POST['body'] ?? '');
@@ -147,12 +134,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     )));
   }
 
-  // Flag content if lexicon hits OR media is attached
   [$lexHits, $firstHit] = scanLexicon($LEXICON, $title . "\n" . $body);
   $mediaProvided = isset($_FILES['media']) && is_array($_FILES['media']) && ($_FILES['media']['error'] !== UPLOAD_ERR_NO_FILE);
   $postStatus = ($lexHits > 0 || $mediaProvided) ? 'flagged' : 'live';
 
-  // Media validation (no exceptions thrown)
   $MAX_BYTES = 30 * 1024 * 1024; // 30 MB
   $incomingMime = '';
 
@@ -178,7 +163,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
       $conn->beginTransaction();
 
-      // Insert post
       $ins = $conn->prepare("
         INSERT INTO post (user_id, main_category_id, title, body, content_status)
         VALUES (:uid, :mid, :title, :body, :status)
@@ -192,7 +176,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       ]);
       $postId = (int)$conn->lastInsertId();
 
-      // Link subcats
       if ($subIds) {
         $ps = $conn->prepare("INSERT IGNORE INTO post_subcategory (post_id, subcategory_id) VALUES (:p, :s)");
         foreach ($subIds as $sid) {
@@ -213,14 +196,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
       }
 
-      // Save media (optional) — uses path relative to THIS file
       if ($mediaProvided && $incomingMime) {
-        $uploadsDir = __DIR__ . '/uploads'; // not hard-coded; based on this script's folder
+        $uploadsDir = __DIR__ . '/uploads';
 
-        // Best-effort ensure directory exists and is writable
-        if (!is_dir($uploadsDir)) { @mkdir($uploadsDir, 0775, true); }
+        if (!is_dir($uploadsDir)) {
+          @mkdir($uploadsDir, 0757, true);  
+        }
+
+        if (is_dir($uploadsDir) && !is_writable($uploadsDir)) {
+          @chmod($uploadsDir, 0757);
+        }
+
         if (!is_dir($uploadsDir) || !is_writable($uploadsDir)) {
-          $errors[] = 'Uploads directory not writable. Ensure /public_html/uploads exists and is 775.';
+          $errors[] = 'not writable';
         } else {
           $ext = match ($incomingMime) {
             'image/jpeg' => '.jpg',
@@ -235,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           $destPath = $uploadsDir . '/' . $safeName;
 
           if (!@move_uploaded_file($_FILES['media']['tmp_name'], $destPath)) {
-            $errors[] = 'Failed to move uploaded file. Check permissions on /uploads (try 775).';
+            $errors[] = 'cant move to folder';
           } else {
             @chmod($destPath, 0644);
             $stm = $conn->prepare("
@@ -244,7 +232,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ");
             $stm->execute([
               ':pid'  => $postId,
-              ':fn'   => 'uploads/' . $safeName, // relative URL path for serving
+              ':fn'   => 'uploads/' . $safeName, 
               ':type' => $mediaType,
             ]);
           }
@@ -287,9 +275,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <span>Cat Corner</span>
       </a>
     </div>
+
+    <div class="nav-center">
+      <a href="index.php" class="nav-link">Home</a>
+      <?php if (in_array($role, ['registered', 'moderator', 'admin'], true)): ?>
+        <a href="my_reviews.php" class="nav-link">My Reviews</a>
+      <?php endif; ?>
+      <?php if (in_array($role, ['moderator','admin'], true)): ?>
+        <a href="mod_flags.php" class="nav-link">Moderation Queue</a>
+      <?php endif; ?>
+      <?php if ($role === 'admin'): ?>
+        <a href="admin_logs.php" class="nav-link">Admin Logs</a>
+        <a href="promote_user.php" class="nav-link">Promote Users</a>
+      <?php endif; ?>
+    </div>
+
     <div class="nav-right">
-      <span class="pill"><?= e($user['display_name'] ?? $user['username']) ?> (<?= e($role) ?>)</span>
-      <a class="btn-outline" href="logout.php">Log out</a>
+      <?php if ($user): ?>
+        <a class="pill" href="profile.php?id=<?= (int)$user['user_id'] ?>">
+          <?= e($user['display_name'] ?? $user['username']) ?> (<?= e($role) ?>)
+        </a>
+        <a class="btn-outline" href="logout.php">Log out</a>
+      <?php else: ?>
+        <a class="btn-outline" href="login.php">Sign in</a>
+      <?php endif; ?>
     </div>
   </nav>
 
@@ -374,4 +383,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </script>
 </body>
 </html>
+
 

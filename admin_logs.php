@@ -62,18 +62,24 @@ $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
       </a>
     </div>
 
-    <div class="nav-center">
+   <div class="nav-center">
       <a href="index.php" class="nav-link">Home</a>
 
-      <?php if (in_array($user['role'] ?? '', ['moderator', 'admin'], true)): ?>
+      <?php if (in_array($role, ['registered', 'moderator', 'admin'], true)): ?>
+        <a href="my_reviews.php" class="nav-link">My Reviews</a>
+      <?php endif; ?>
+
+      <?php if (in_array($role, ['moderator','admin'], true)): ?>
         <a href="mod_flags.php" class="nav-link">Moderation Queue</a>
       <?php endif; ?>
 
-      <?php if (($user['role'] ?? '') === 'admin'): ?>
-        <a href="admin_logs.php" class="nav-link active">Admin Logs</a>
+      <?php if ($role === 'admin'): ?>
+        <a href="admin_logs.php" class="nav-link">Admin Logs</a>
         <a href="promote_user.php" class="nav-link">Promote Users</a>
       <?php endif; ?>
     </div>
+
+
 
     <div class="nav-right">
       <?php if ($user): ?>

@@ -54,8 +54,13 @@ if ($selectedMain !== 'home') {
   $params[':main_id'] = $mainId;
   $sql = "
     SELECT
-      p.post_id, p.title, p.body, p.created_at,
-      u.display_name, u.username,
+      p.post_id,
+      p.title,
+      p.body,
+      p.created_at,
+      u.user_id,
+      u.display_name,
+      u.username,
       COALESCE(sc.subcats_csv, '') AS subcats,
       EXISTS (
         SELECT 1
@@ -93,8 +98,13 @@ if ($selectedMain !== 'home') {
   // home: all live posts
   $sql = "
     SELECT
-      p.post_id, p.title, p.body, p.created_at,
-      u.display_name, u.username,
+      p.post_id,
+      p.title,
+      p.body,
+      p.created_at,
+      u.user_id,
+      u.display_name,
+      u.username,
       COALESCE(sc.subcats_csv, '') AS subcats,
       EXISTS (
         SELECT 1
@@ -159,25 +169,32 @@ $isLoggedIn = $user ? 'true' : 'false';
 
     <div class="nav-center">
       <a href="index.php" class="nav-link">Home</a>
-      <?php if (in_array($user['role'] ?? '', ['moderator', 'admin'])): ?>
+
+      <?php if ($user && in_array($user['role'], ['registered', 'moderator', 'admin'], true)): ?>
+        <a href="my_reviews.php" class="nav-link">My Reviews</a>
+      <?php endif; ?>
+
+      <?php if ($user && in_array($user['role'], ['moderator','admin'], true)): ?>
         <a href="mod_flags.php" class="nav-link">Moderation Queue</a>
       <?php endif; ?>
-      <?php if (($user['role'] ?? '') === 'admin'): ?>
+
+      <?php if ($user && $user['role'] === 'admin'): ?>
         <a href="admin_logs.php" class="nav-link">Admin Logs</a>
         <a href="promote_user.php" class="nav-link">Promote Users</a>
       <?php endif; ?>
     </div>
-
     <div class="nav-right">
       <?php if ($user): ?>
-        <span class="pill">
+        <a class="pill" href="profile.php?id=<?= (int)$user['user_id'] ?>">
           <?= e($user['display_name'] ?? $user['username']) ?> (<?= e($user['role']) ?>)
-        </span>
+        </a>
         <a class="btn-outline" href="logout.php">Log out</a>
       <?php else: ?>
         <a class="btn-outline" href="login.php">Sign in</a>
       <?php endif; ?>
+      <a href="about_us.php" class="nav-link">About Us</a>
     </div>
+
   </nav>
 
   <!-- layout: sidebar + feed -->
@@ -222,37 +239,37 @@ $isLoggedIn = $user ? 'true' : 'false';
       <?php else: ?>
         <div class="post-list">
           <?php foreach ($posts as $p):
-            $author  = $p['display_name'] ?: $p['username'] ?: 'anonymous';
-            $created = date('M j, Y g:i a', strtotime($p['created_at']));
-            $chips = [];
+            $author   = $p['display_name'] ?: $p['username'] ?: 'anonymous';
+            $authorId = (int)$p['user_id'];
+            $created  = date('M j, Y g:i a', strtotime($p['created_at']));
+            $chips    = [];
             if (!empty($p['subcats'])) {
               $chips = array_filter(array_map('trim', explode(',', $p['subcats'])));
             }
           ?>
           <article class="post-card card">
             <!-- Header: Title — Date/Time -->
-          <header class="post-head">
-            <div class="post-titleline">
-              <h3 class="post-title" style="margin:0">
-                <a class="link" href="post.php?id=<?= (int)$p['post_id'] ?>">
-                  <?= e($p['title']) ?>
-                </a>
-              </h3>
+            <header class="post-head">
+              <div class="post-titleline">
+                <h3 class="post-title" style="margin:0">
+                  <a class="link" href="post.php?id=<?= (int)$p['post_id'] ?>">
+                    <?= e($p['title']) ?>
+                  </a>
+                </h3>
 
-              <?php if (!empty($chips)): ?>
-                <div class="title-chips">
-                  <?php foreach ($chips as $chip): ?>
-                    <span class="title-chip"><?= e($chip) ?></span>
-                  <?php endforeach; ?>
-                </div>
-              <?php endif; ?>
-            </div>
+                <?php if (!empty($chips)): ?>
+                  <div class="title-chips">
+                    <?php foreach ($chips as $chip): ?>
+                      <span class="title-chip"><?= e($chip) ?></span>
+                    <?php endforeach; ?>
+                  </div>
+                <?php endif; ?>
+              </div>
 
-            <div class="post-date">
-              <?= e(date('M j, Y g:i a', strtotime($p['created_at']))) ?>
-            </div>
-          </header>
-
+              <div class="post-date">
+                <?= e($created) ?>
+              </div>
+            </header>
 
             <!-- Optional media badge -->
             <?php if (!empty($p['has_media'])): ?>
@@ -265,7 +282,12 @@ $isLoggedIn = $user ? 'true' : 'false';
             </div>
 
             <!-- Footer: creator -->
-            <div class="post-footer">by <?= e($author) ?></div>
+            <div class="post-footer">
+              by
+              <a href="profile.php?id=<?= $authorId ?>">
+                <?= e($author) ?>
+              </a>
+            </div>
           </article>
           <?php endforeach; ?>
         </div>
@@ -274,4 +296,3 @@ $isLoggedIn = $user ? 'true' : 'false';
   </div>
 </body>
 </html>
-
