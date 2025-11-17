@@ -21,11 +21,12 @@ if (!$user) {
 $userId = (int)$user['user_id'];
 $role   = $user['role'] ?? 'registered';
 
-$errors = [];
-$rows   = [];
+$errors   = [];
+$posts    = [];
+$comments = [];
 
+// User's POSTS in review (pending or flagged) + latest open flag per post
 try {
-  // latest open flag per post (if any) + only user's posts that are pending/flagged
   $stmt = $conn->prepare("
     SELECT
       p.post_id,
@@ -58,10 +59,38 @@ try {
     LIMIT 200
   ");
   $stmt->execute([':uid' => $userId]);
-  $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  $posts = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $t) {
   $errors[] = 'Failed to load your in-review posts.';
 }
+
+// User's COMMENTS in review (flagged only; no flags table for comments)
+try {
+  $cstmt = $conn->prepare("
+    SELECT
+      c.comment_id,
+      c.post_id,
+      c.body,
+      c.created_at,
+      c.content_status,
+      p.title AS post_title,
+      mc.name AS main_name,
+      mc.slug AS main_slug
+    FROM comment c
+    JOIN post p ON p.post_id = c.post_id
+    LEFT JOIN main_category mc ON mc.main_category_id = p.main_category_id
+    WHERE c.user_id = :uid
+      AND c.content_status = 'flagged'
+    ORDER BY c.created_at DESC
+    LIMIT 200
+  ");
+  $cstmt->execute([':uid' => $userId]);
+  $comments = $cstmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+} catch (Throwable $t) {
+  $errors[] = 'Failed to load your in-review comments.';
+}
+
+$totalItems = count($posts) + count($comments);
 ?>
 <!doctype html>
 <html lang="en">
@@ -70,7 +99,7 @@ try {
   <title>Currently in Review — Cat Corner</title>
   <link rel="stylesheet" href="css/style.css" type="text/css">
   <style>
-    .review-head { display:flex; align-items:center; gap:.5rem; }
+    .review-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
     .badge { background:#fff3cd; color:#7f5d00; padding:.15rem .5rem; border-radius:999px; font-size:.85rem; border:1px solid #ffe8a1; }
     .review-list { display:grid; grid-template-columns:1fr; gap:.75rem; margin-top:.75rem; }
     @media (min-width: 900px) { .review-list { grid-template-columns:1fr 1fr; } }
@@ -78,6 +107,8 @@ try {
     .pill-status { padding:.05rem .45rem; border-radius:999px; border:1px solid #e0e0e0; font-size:.8rem; margin-left:.35rem; }
     .pill-flagged { background:#ffe3cf; color:#6b3d10; border-color:#ffd1b0; }
     .pill-pending { background:#e6f0ff; color:#0b3a7a; border-color:#cbddff; }
+    .section-head { display:flex; align-items:center; gap:.5rem; margin-top:1.25rem; }
+    .kind-pill { font-size:.75rem; padding:.1rem .45rem; border-radius:6px; border:1px solid #e5e7eb; background:#fff; }
   </style>
 </head>
 <body>
@@ -93,7 +124,7 @@ try {
       <a href="index.php" class="nav-link">Home</a>
 
       <?php if (in_array($role, ['registered', 'moderator', 'admin'], true)): ?>
-        <a href="my_reviews.php" class="nav-link">My Reviews</a>
+        <a href="my_reviews.php" class="nav-link active">My Reviews</a>
       <?php endif; ?>
 
       <?php if (in_array($role, ['moderator','admin'], true)): ?>
@@ -122,9 +153,11 @@ try {
   <main class="container">
     <div class="review-head">
       <h1 style="margin:0;">Currently in Review</h1>
-      <span class="badge"><?= count($rows) ?> pending</span>
+      <span class="badge"><?= $totalItems ?> total</span>
+      <span class="kind-pill">Posts: <?= count($posts) ?></span>
+      <span class="kind-pill">Comments: <?= count($comments) ?></span>
     </div>
-    <p class="sub">These are your posts that are awaiting review or are in the moderation queue.</p>
+    <p class="sub">These are your posts (pending/flagged) and your comments (flagged) that are awaiting review.</p>
 
     <?php if ($errors): ?>
       <div class="card error-card">
@@ -132,11 +165,17 @@ try {
       </div>
     <?php endif; ?>
 
-    <?php if (!$rows): ?>
+    <!-- POSTS -->
+    <div class="section-head">
+      <h2 style="margin:0;">Your Posts</h2>
+      <span class="badge"><?= count($posts) ?> in review</span>
+    </div>
+
+    <?php if (!count($posts)): ?>
       <div class="card"><strong>All clear!</strong> You have no posts in review.</div>
     <?php else: ?>
       <div class="review-list">
-        <?php foreach ($rows as $r): ?>
+        <?php foreach ($posts as $r): ?>
           <?php
             $created = date('M j, Y g:i a', strtotime($r['created_at']));
             $excerpt = mb_strimwidth((string)$r['body'], 0, 280, '…');
@@ -160,18 +199,60 @@ try {
               <?php endif; ?>
               <?php if (!empty($r['trigger_word'])): ?>
                 · trigger: “<?= e($r['trigger_word']) ?>”
+              <?php elseif (!empty($r['trigger_source'])): ?>
+                · source: <?= e($r['trigger_source']) ?>
               <?php endif; ?>
             </div>
             <p><?= e($excerpt) ?></p>
             <div class="meta">
-              <?php if ($r['flagged_at']): ?>
-                Last reviewed: <?= e(date('M j, Y g:i a', strtotime($r['flagged_at']))) ?>
+              <?php if (!empty($r['flagged_at'])): ?>
+                Last flagged: <?= e(date('M j, Y g:i a', strtotime($r['flagged_at']))) ?>
               <?php endif; ?>
             </div>
           </article>
         <?php endforeach; ?>
       </div>
     <?php endif; ?>
+
+    <!-- COMMENTS -->
+    <div class="section-head">
+      <h2 style="margin:0;">Your Comments</h2>
+      <span class="badge"><?= count($comments) ?> in review</span>
+    </div>
+
+    <?php if (!count($comments)): ?>
+      <div class="card"><strong>All clear!</strong> You have no comments in review.</div>
+    <?php else: ?>
+      <div class="review-list">
+        <?php foreach ($comments as $c): ?>
+          <?php
+            $cCreated = date('M j, Y g:i a', strtotime($c['created_at']));
+            $cExcerpt = mb_strimwidth((string)$c['body'], 0, 280, '…');
+            $cStatus  = $c['content_status'];
+            $postId   = (int)$c['post_id'];
+            $cid      = (int)$c['comment_id'];
+          ?>
+          <article class="card">
+            <h3 style="margin-top:0;">
+              <a href="post.php?id=<?= $postId ?>#comment-<?= $cid ?>" target="_blank">
+                in: <?= e($c['post_title'] ?: 'post') ?>
+              </a>
+              <?php if ($cStatus === 'flagged'): ?>
+                <span class="pill-status pill-flagged">flagged</span>
+              <?php endif; ?>
+            </h3>
+            <div class="meta">
+              <?= e($cCreated) ?>
+              <?php if (!empty($c['main_slug'])): ?>
+                · in <a href="index.php?main=<?= e($c['main_slug']) ?>"><?= e($c['main_name'] ?? 'Category') ?></a>
+              <?php endif; ?>
+            </div>
+            <p><?= e($cExcerpt) ?></p>
+          </article>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+
   </main>
 </body>
 </html>

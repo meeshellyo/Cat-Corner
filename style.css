@@ -1,35 +1,50 @@
 /* =========================================================
-   Cat Corner — Classic CSS (Beige + Sage, wider content)
-   No :root, no global resets
-========================================================= */
+   =============== Base / Global ===========================
+   - Body, typography, links, basic utilities
+   ======================================================= */
 
-/* ---------- Base ---------- */
+:root {
+  /* You can centralize palette here if you want to reuse */
+  /* --sage-600: #6f857a; */
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
 body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
   font-size: 16px;
   line-height: 1.6;
-  color: #2f312c;               /* dark neutral text */
-  background-color: #f4efe6;    /* warm muted beige page bg */
+  color: #2f312c;
+  background-color: #f4efe6;
 }
 
 h1, h2, h3, h4, h5 {
   margin: 0 0 12px 0;
   font-weight: 700;
-  color: #2f4f45;               /* deep sage for headings */
+  color: #2f4f45;
 }
+
 p { margin: 0 0 12px 0; }
 
 a { color: #356a57; text-decoration: none; }
 a:hover { color: #254b40; text-decoration: underline; }
 
-/* ---------- Navigation ---------- */
+.muted { color: #6b7280; font-size: 0.9rem; }
+.nowrap { white-space: nowrap; }
+
+/* =========================================================
+   =============== Navigation Bar ==========================
+   ======================================================= */
+
 .nav {
   position: sticky;
   top: 0;
   z-index: 100;
   height: 64px;
-  background-color: #fbf8f2;   /* light card tone so it blends with beige */
+  background-color: #fbf8f2;
   color: #2f312c;
   border-bottom: 1px solid #e0dacd;
   display: flex;
@@ -48,7 +63,8 @@ a:hover { color: #254b40; text-decoration: underline; }
   gap: 14px;
 }
 
-.nav-center {               /* keeps tabs centered */
+/* Center area collapses on small screens via media query */
+.nav-center {
   flex: 1 1 auto;
   justify-content: center;
   min-width: 0;
@@ -59,7 +75,7 @@ a:hover { color: #254b40; text-decoration: underline; }
   align-items: center;
   gap: 8px;
 }
-.brand img {                /* prevent giant logo */
+.brand img {
   width: 36px;
   height: 36px;
   object-fit: cover;
@@ -67,99 +83,112 @@ a:hover { color: #254b40; text-decoration: underline; }
   border: 1px solid #e0dacd;
 }
 
-/* ---------- Containers / Surfaces ---------- */
-/* Soft ivory card so it’s not stark white against beige */
+/* =========================================================
+   ================= Containers / Layout ===================
+   ======================================================= */
+
 .container {
-  max-width: 1440px;          /* WIDER main container */
+  max-width: 1440px;
   margin: 72px auto;
   padding: 24px;
-  background-color: #fffdf9;  /* ivory */
-  border: 1px solid #e6e0d5;  /* stone */
+  background-color: #fffdf9;
+  border: 1px solid #e6e0d5;
   border-radius: 14px;
   box-shadow: 0 8px 20px rgba(0,0,0,.08);
   color: #2f312c;
 }
+.container.home { max-width: 1440px; }
+.container.narrow { max-width: 1040px; }
 
-.container.home { max-width: 1440px; }   /* ensure the Home view is wide */
-.container.narrow { max-width: 1040px; } /* detail pages still roomy */
+/* Page wrapper used on index */
+.page { max-width: 1080px; margin: 0 auto; padding: 16px; }
 
-/* Optional standalone logo block inside pages (not the header) */
-.logo { text-align: center; margin: 0 0 12px 0; }
-.logo img {
-  max-width: 180px;
-  height: auto;
-  border-radius: 12px;
-  border: 1px solid #e6e0d5;
-  box-shadow: 0 6px 16px rgba(0,0,0,.08);
-}
-
-/* ---------- Two-column Layout (Categories + Main) ---------- */
+/* Main two-column layout: Sidebar + Feed */
 .layout {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
-  gap: 40px;               /* keeps a nice space between sidebar and main */
-  max-width: 1250px;
-  margin: 24px 0 24px 0;   /* no auto-centering — aligns flush left */
-  padding: 0 24px 0 24px;  /* gentle edge padding */
+  grid-template-columns: 260px minmax(0, 1fr); /* narrower, more readable */
+  gap: 16px;
 }
 
+/* Collapse to single column on narrower screens */
 @media (max-width: 1000px) {
-  .layout { 
-    grid-template-columns: 1fr; 
-    margin: 0 auto;
-    padding: 0 16px;
+  .layout {
+    grid-template-columns: 1fr;
   }
 }
 
-/* Sidebar (Categories) */
+/* Reduce outer container+nav density on small screens */
+@media (max-width: 760px) {
+  .container { margin: 60px auto; padding: 16px; }
+  .nav-center { display: none; }
+}
+
+/* =========================================================
+   =================== Sidebar (Categories) ================
+   ======================================================= */
+
 .sidebar {
   background-color: #fffdf9;
   border: 1px solid #e6e0d5;
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 8px 18px rgba(0,0,0,.06);
   position: sticky;
-  top: 76px;
-  height: auto;
-  min-height: 80vh;
-  margin-left: 0;          /* ensures it sits flush to the edge */
+  top: 76px;               /* sits below nav */
+  align-self: start;
 }
 
-/* Sidebar title stays */
-.sidebar-title { 
-  margin: 0 0 10px 0; 
-  color: #2f4f45; 
+.sidebar-title {
+  margin: 6px 0 8px;
+  font-size: 1.05rem;
+  color: #334155;
 }
 
-/* Feed container — wider and more open */
-.feed.container.home {
-  width: 100%;
-  max-width: none;
-  background-color: #fffdf9;
-  border: 1px solid #e6e0d5;
-  border-radius: 14px;
-  padding: 32px 40px;
-  box-shadow: 0 10px 24px rgba(0,0,0,.06);
-}
-
-
-/* Categories list */
 .cat-list { list-style: none; margin: 0; padding: 0; }
-.cat-list li { margin: 8px 0; }
+.cat-list li { margin: 6px 0; }
+
 .cat-link {
   display: block;
-  padding: 12px 14px;              /* chunkier/longer feel */
-  border-radius: 12px;
-  color: #2f312c;
-  background-color: transparent;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #334155;
 }
-.cat-link:hover { background-color: #f1ede5; }
-.cat-link.active {
-  background-color: #eaf0ea;       /* pale sage */
-  border: 1px solid #d7e2d7;
+.cat-link:hover { background: #f1f5f9; }
+.cat-link.active { background: #0ea5e9; color: #fff; }
+
+/* Sidebar sizing on small screens:
+   - remove sticky feel
+   - ensure it doesn't take the whole page */
+@media (max-width: 1000px) {
+  .sidebar {
+    position: static;
+    top: auto;
+    max-width: 100%;
+    width: 100%;
+    padding: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,.04);
+  }
 }
 
-/* ---------- Cards / Feed ---------- */
+/* =========================================================
+   ==================== Feed / Cards =======================
+   ======================================================= */
+
+.feed h1 { margin: 6px 0 2px; font-size: 1.6rem; }
+.sub { color: #6b7280; margin: 4px 0 14px; }
+
+.feed-bar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 16px;
+  flex-wrap: wrap;
+}
+
+.sort { display: flex; gap: 8px; align-items: center; }
+.sort select { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 8px; background: #fff; }
+
 .card {
   background-color: #fffdf9;
   border: 1px solid #e6e0d5;
@@ -171,17 +200,64 @@ a:hover { color: #254b40; text-decoration: underline; }
 .card:hover { box-shadow: 0 12px 24px rgba(0,0,0,.08); }
 .card-title { color: #2f4f45; margin-bottom: 6px; }
 
-.feed .post-list { display: grid; gap: 16px; }
-.post-card.card { text-align: left; }
+.post-list { display: grid; gap: 12px; }
 
-/* Create button spacing fix (no overlap with the first card) */
-.post-head { margin-bottom: 12px; }
-.post-head .btn, .btn-create { display: inline-flex; margin-bottom: 10px; }
-.btn + .card, .btn + .post-list { margin-top: 12px; }
+/* Post card with optional media thumb */
+.post-card {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+@media (max-width: 720px) {
+  .post-card { grid-template-columns: 1fr; }
+}
 
-/* ---------- Buttons ---------- */
+/* Thumbnail block (small image) */
+.thumb {
+  width: 120px;
+  height: 80px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+
+
+/* Post content area */
+.card-body { min-width: 0; }
+.title { margin: 0 0 4px; font-size: 1.1rem; line-height: 1.35; }
+.title a { text-decoration: none; color: #111827; }
+
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 6px; }
+.chip { font-size: .75rem; border: 1px solid #e5e7eb; padding: 2px 8px; border-radius: 999px; background: #f9fafb; color: #334155; }
+
+.snippet { color: #374151; margin: 6px 0 8px; font-size: .98rem; line-height: 1.45; }
+.meta { color: #6b7280; font-size: .9rem; display: flex; gap: 10px; flex-wrap: wrap; }
+
+.actions { display: flex; align-items: center; justify-content: flex-start; gap: 12px; margin-top: 6px; }
+.vote { display: flex; gap: 8px; align-items: center; }
+.btn-vote { border: 1px solid #e5e7eb; background: #fff; padding: 4px 8px; border-radius: 8px; cursor: pointer; font-size: .9rem; }
+.btn-vote.active { background: #f0f9ff; border-color: #bae6fd; }
+.count { color: #6b7280; font-size: .9rem; }
+
+/* =========================================================
+   ===================== Buttons ===========================
+   ======================================================= */
+
 .btn {
-  background-color: #6f857a;   /* sage button */
+  background-color: #6f857a;
   color: #ffffff;
   border: none;
   border-radius: 10px;
@@ -212,7 +288,10 @@ a:hover { color: #254b40; text-decoration: underline; }
 }
 .btn-quiet:hover { background-color: #eef3ef; }
 
-/* ---------- Forms ---------- */
+/* =========================================================
+   =================== Forms / Inputs ======================
+   ======================================================= */
+
 label { display: block; font-weight: bold; margin-bottom: 6px; color: #3b3a36; }
 
 input, textarea, select {
@@ -225,11 +304,14 @@ input, textarea, select {
 }
 input:focus, textarea:focus, select:focus {
   outline: none;
-  border-color: #7a8d76;   /* sage focus */
+  border-color: #7a8d76;
   background-color: #ffffff;
 }
 
-/* ---------- Post Page ---------- */
+/* =========================================================
+   ================== Post Page Layout =====================
+   ======================================================= */
+
 .post-page.container.narrow { max-width: 1040px; }
 
 .post-header {
@@ -241,21 +323,40 @@ input:focus, textarea:focus, select:focus {
 }
 .post-actions-top { display: inline-flex; gap: 8px; flex-wrap: wrap; }
 
-/* Subcategory chips */
-.chip-list { list-style: none; margin: 6px 0 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.chip {
-  padding: 2px 8px;
-  border: 1px solid #e6e0d5;
-  border-radius: 999px;
-  background-color: #fffdf9;
-  color: #3b3a36;
-  font-size: 13px;
-}
-
-/* Paragraph rhythm */
 .prose p { margin: 10px 0; }
 
-/* ---------- Comments ---------- */
+.post-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.post-titleline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.post-date {
+  margin-left: auto;
+  color: #6f7470;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.title-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.title-chip {
+  padding: 2px 8px;
+  font-size: 12px;
+  border: 1px solid #e6e0d5;
+  border-radius: 999px;
+  background: #fff;
+  color: #3b3a36;
+}
+
+.post-card .chip-list { display: none !important; }
+
+/* Post header stack on small screens */
+@media (max-width: 900px) {
+  .post-header { flex-direction: column; }
+  .post-actions-top { align-self: flex-start; }
+}
+
+/* =========================================================
+   =================== Comments Section ====================
+   ======================================================= */
+
 .comments { margin-top: 18px; }
 .comments > h2 {
   margin-top: 6px;
@@ -277,7 +378,10 @@ input:focus, textarea:focus, select:focus {
 .comment-form textarea { background-color: #f7f6f2; }
 .comment-item.flagged { display: none !important; }
 
-/* ---------- Tables / Logs ---------- */
+/* =========================================================
+   ==================== Tables / Logs ======================
+   ======================================================= */
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -290,7 +394,111 @@ th, td { padding: 12px; border-bottom: 1px solid #ebe6db; text-align: left; }
 th { background-color: #faf6ee; color: #3b3a36; }
 tr:hover { background-color: #f7f2ea; }
 
-/* ---------- Alerts ---------- */
+.log-table-wrapper { overflow: auto; }
+table.mod-log-table { width: 100%; border-collapse: collapse; }
+.mod-log-table th, .mod-log-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+  vertical-align: top;
+}
+.mod-log-table th {
+  font-weight: 600;
+  color: #111827;
+  background: #fafafa;
+}
+
+.act-approved { color: #046c4e; }
+.act-rejected { color: #991b1b; }
+
+.reason-col { max-width: 520px; }
+
+/* Pills / badges used in moderation screens */
+.mod-head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.badge { background: #fee2e2; color: #7f1d1d; padding: .15rem .5rem; border-radius: 999px; font-size: .85rem; border: 1px solid #fecaca; }
+.kind-pill { font-size: .75rem; padding: .1rem .45rem; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; }
+
+/* =========================================================
+   ================= About / Profile Pages =================
+   ======================================================= */
+
+.about-container {
+  max-width: 700px;
+  margin: 3rem auto;
+  text-align: center;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  line-height: 1.6;
+}
+.about-logo {
+  width: 200px;
+  height: auto;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.profile-header {
+  max-width: 900px;
+  margin: 1.5rem auto 1rem;
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+.avatar-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #4b5563;
+}
+.profile-main h1 { margin: 0; }
+.profile-meta { color: #6b7280; font-size: 0.95rem; margin-top: 0.25rem; }
+.profile-bio { margin-top: 0.75rem; line-height: 1.6; }
+.edit-bio-card { max-width: 900px; margin: 1rem auto 1.5rem; }
+
+/* Tabs used on profile */
+.tabs {
+  max-width: 900px;
+  margin: 1.5rem auto 0;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  gap: 1rem;
+}
+.tab-link {
+  background: none;
+  border: none;
+  padding: 0.75rem 0;
+  font: inherit;
+  cursor: pointer;
+  color: #6b7280;
+  border-bottom: 2px solid transparent;
+}
+.tab-link.active {
+  color: #111827;
+  border-bottom-color: #111827;
+  font-weight: 600;
+}
+.tab-panel {
+  max-width: 900px;
+  margin: 1rem auto 2rem;
+  display: none;
+}
+.tab-panel.active { display: block; }
+
+.item-meta { color: #6b7280; font-size: 0.9rem; margin-bottom: 0.35rem; }
+.comment-body { margin: 0.25rem 0 0.5rem; }
+
+/* =========================================================
+   ================= Error / Notice Helpers ================
+   ======================================================= */
+
 .error-list {
   list-style: none;
   background-color: #fdecec;
@@ -309,19 +517,53 @@ tr:hover { background-color: #f7f2ea; }
   color: #2f312c;
 }
 
-/* ---------- Responsive tweaks ---------- */
-@media (max-width: 900px) {
-  .post-header { flex-direction: column; }
-  .post-actions-top { align-self: flex-start; }
+/* =========================================================
+   ================= Subcategory Checklist =================
+   ======================================================= */
+
+.subcat-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 12px;
+  align-items: center;
 }
-@media (max-width: 760px) {
-  .container { margin: 60px auto; padding: 16px; }
-  .nav-center { display: none; }
+.subcat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #e6e0d5;
+  background: #fffdf9;
+  border-radius: 8px;
+}
+.subcat-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+.subcat-row label {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
 }
 
-/* ---------- Login Page ---------- */
+/* =========================================================
+   ================= Auth / Logo (Login & Create) ==========
+   ======================================================= */
+
+/* Generic logo helper for pages that show a doodle */
+.logo { text-align: center; margin: 0 0 12px 0; }
+.logo img {
+  max-width: 180px;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid #e6e0d5;
+  box-shadow: 0 6px 16px rgba(0,0,0,.08);
+}
+
+/* Small, centered card used on login/create pages */
 .container.has-logo {
-  max-width: 400px;        /* keeps the login box compact */
+  max-width: 400px;
   margin: 4rem auto;
   background-color: #fffdf9;
   padding: 2rem;
@@ -334,246 +576,58 @@ tr:hover { background-color: #f7f2ea; }
   color: #2f4f45;
   margin-bottom: 1.5rem;
 }
-
 .container.has-logo .logo img {
-  max-width: 120px;        /* make the cat logo smaller */
+  max-width: 120px;
   height: auto;
   display: block;
   margin: 1.5rem auto 1rem;
   border-radius: 12px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, .08);
 }
-
 .container.has-logo form {
   margin-top: 1rem;
 }
-
 .container.has-logo .btn {
   width: 100%;
   margin-top: 1rem;
 }
-
 .container.has-logo a.link {
   display: inline-block;
   margin-top: .5rem;
   text-align: center;
 }
 
-/* ---------- Subcategory checklist (Create Post) ---------- */
-.subcat-list{
-  display:grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 8px 12px;
-  align-items:center;
-}
-.subcat-row{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:6px 8px;
-  border:1px solid #e6e0d5;
-  background:#fffdf9;
-  border-radius:8px;
-}
-.subcat-row input[type="checkbox"]{
-  width:16px; height:16px; margin:0;
-}
-.subcat-row label{
-  margin:0;
-  font-weight:600;
-  font-size:14px;
+/* =========================================================
+   ========== Home feed media (index.php) ==================
+   ======================================================= */
+
+/* Post cards: simple blocks (no 2-column grid) */
+.post-card {
+  display: block;
+  padding: 16px;           /* normal card padding */
 }
 
-/* ---------- Title chips (inline, tiny) ---------- */
-.post-titleline{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex-wrap:wrap;
-}
-.title-chips{ display:flex; gap:6px; flex-wrap:wrap; }
-.title-chip{
-  padding:2px 8px;
-  font-size:12px;
-  border:1px solid #e6e0d5;
-  border-radius:999px;
-  background:#fff;
-  color:#3b3a36;
+/* Remove extra padding here; card-body will hold content */
+.post-card .card-body {
+  padding: 0;
 }
 
-/* Feed title row: chips inline + date on right */
-.post-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-.post-titleline { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-
-.post-date {
-  margin-left:auto;
-  color:#6f7470;         /* lighter/muted */
-  font-size:14px;        /* smaller */
-  font-weight:normal;
+/* Image link that sits UNDER the title */
+.post-card .media-top {
+  display: block;
+  text-align: center;      /* center the image */
+  margin: 8px 0 10px;      /* space above/below the image */
+  background: transparent; /* no grey bar */
+  padding: 0;
 }
 
-/* tiny chips next to title */
-.title-chips{ display:flex; gap:6px; flex-wrap:wrap; }
-.title-chip{
-  padding:2px 8px;
-  font-size:12px;
-  border:1px solid #e6e0d5;
-  border-radius:999px;
-  background:#fff;
-  color:#3b3a36;
+/* Smaller, full, non-cropped preview */
+.post-card .media-top img {
+  display: inline-block;
+  max-width: 260px;        /* tweak for bigger/smaller */
+  max-height: 260px;
+  width: auto;
+  height: auto;
+  border-radius: 10px;
+  object-fit: contain;     /* show whole image */
 }
-
-/* make sure old, large list doesn't render in feed even if left in markup */
-.post-card .chip-list { display:none !important; }
-
-/* -----------------------------
-   Admin Logs Page Styling
-   ----------------------------- */
-.log-table-wrapper {
-  overflow: auto;
-}
-
-table.mod-log-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.mod-log-table th,
-.mod-log-table td {
-  padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid #e5e7eb;
-  text-align: left;
-  vertical-align: top;
-}
-
-.mod-log-table th {
-  font-weight: 600;
-  color: #111827;
-  background: #fafafa;
-}
-
-.muted {
-  color: #6b7280;
-  font-size: 0.9rem;
-}
-
-.reason-col {
-  max-width: 520px;
-}
-
-.nowrap {
-  white-space: nowrap;
-}
-
-/* Simple colored text for actions */
-.act-approved {
-  color: #046c4e; /* green */
-}
-
-.act-rejected {
-  color: #991b1b; /* red */
-}
-
-    .about-container {
-      max-width: 700px;
-      margin: 3rem auto;
-      text-align: center;
-      background: #fff;
-      padding: 2rem;
-      border-radius: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      line-height: 1.6;
-    }
-    .about-logo {
-      width: 200px;
-      height: auto;
-      border-radius: 10px;
-      margin-bottom: 1rem;
-    }
-    h1 {
-      margin-bottom: 1rem;
-      font-size: 2rem;
-    }
-    .support {
-      margin-top: 2rem;
-      font-size: 0.95rem;
-      color: #555;
-    }
-
-    .profile-header {
-      max-width: 900px;
-      margin: 1.5rem auto 1rem;
-      display: flex;
-      gap: 1.5rem;
-      align-items: flex-start;
-    }
-    .avatar-circle {
-      width: 72px;
-      height: 72px;
-      border-radius: 999px;
-      background: #e5e7eb;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
-      font-weight: bold;
-      color: #4b5563;
-    }
-    .profile-main h1 {
-      margin: 0;
-    }
-    .profile-meta {
-      color: #6b7280;
-      font-size: 0.95rem;
-      margin-top: 0.25rem;
-    }
-    .profile-bio {
-      margin-top: 0.75rem;
-      line-height: 1.6;
-    }
-    .edit-bio-card {
-      max-width: 900px;
-      margin: 1rem auto 1.5rem;
-    }
-
-    .tabs {
-      max-width: 900px;
-      margin: 1.5rem auto 0;
-      border-bottom: 1px solid #e5e7eb;
-      display: flex;
-      gap: 1rem;
-    }
-    .tab-link {
-      background: none;
-      border: none;
-      padding: 0.75rem 0;
-      font: inherit;
-      cursor: pointer;
-      color: #6b7280;
-      border-bottom: 2px solid transparent;
-    }
-    .tab-link.active {
-      color: #111827;
-      border-bottom-color: #111827;
-      font-weight: 600;
-    }
-    .tab-panel {
-      max-width: 900px;
-      margin: 1rem auto 2rem;
-      display: none;
-    }
-    .tab-panel.active {
-      display: block;
-    }
-    .item-meta {
-      color: #6b7280;
-      font-size: 0.9rem;
-      margin-bottom: 0.35rem;
-    }
-    .comment-body {
-      margin: 0.25rem 0 0.5rem;
-    }
-
-
-
-

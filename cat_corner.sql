@@ -1,4 +1,5 @@
 -- tables needed for cat corner
+DROP TABLE IF EXISTS post_vote;
 DROP TABLE IF EXISTS moderation_log;
 DROP TABLE IF EXISTS notification;
 DROP TABLE IF EXISTS flag;
@@ -168,4 +169,18 @@ CREATE TABLE moderation_log (
   FOREIGN KEY (moderator_id) REFERENCES users(user_id) ON DELETE CASCADE,
   FOREIGN KEY (post_id) REFERENCES post(post_id) ON DELETE CASCADE
 );
+
+-- post votes (likes/dislikes)
+CREATE TABLE IF NOT EXISTS post_vote (
+  post_id   INT NOT NULL,
+  user_id   INT NOT NULL,
+  value     TINYINT NOT NULL,            -- +1 = like, -1 = dislike
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (post_id, user_id),
+  CONSTRAINT chk_post_vote_value CHECK (value IN (-1, 1)),
+  CONSTRAINT fk_pv_post FOREIGN KEY (post_id) REFERENCES post(post_id) ON DELETE CASCADE,
+  CONSTRAINT fk_pv_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
 

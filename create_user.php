@@ -2,8 +2,6 @@
 // create_user.php
 declare(strict_types=1);
 session_start();
-
-//remove later
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
@@ -14,6 +12,7 @@ $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $errors = []; // to catch errors in creating an account
 
+//check email
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username     = trim($_POST['username'] ?? '');
     $email        = trim($_POST['email'] ?? '');
@@ -27,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = 'Username must be 3–50 chars (letters, numbers, underscore, dot).';
     }
     if ($email === '' || strpos($email, '@') === false) {
-        $errors[] = 'email must have @';
+        $errors[] = 'email must have @'; //need to check *@*.*
     }
     // atleast 12 char
     if ($password !== '' && strlen($password) < 12) {
