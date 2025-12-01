@@ -1,5 +1,5 @@
 <?php
-// profile.php — user profile with tabs for posts and comments + editable bio
+// profile.php 
 declare(strict_types=1);
 session_start();
 
@@ -12,6 +12,28 @@ require_once "database.php";
 function e(string $s): string {
   return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 }
+
+function avatar_url(?string $id): ?string {
+  if (!$id) return null;
+  $id = trim($id);
+  if ($id === '') return null;
+
+  if (strpos($id, '/') !== false) {
+    return $id;
+  }
+  if (strpos($id, '.') === false) {
+    $id .= '.jpg';
+  }
+  return 'doodles/' . $id;
+}
+
+$AVATARS = [
+  'doodles/derpcat.jpg'  => 'Derp Cat',
+  'doodles/chillcat.jpg' => 'Chill Cat',
+  'doodles/shockcat.jpg' => 'Shock Cat',
+  'doodles/happycat.jpg' => 'Happy Cat',
+  'doodles/loafcat.jpg'  => 'Loaf Cat',
+];
 
 // logged-in viewer
 $user   = $_SESSION['user'] ?? null;
@@ -34,7 +56,7 @@ $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 // helper: load a user by id
 function loadProfileUser(PDO $conn, int $uid): ?array {
   $stmt = $conn->prepare("
-    SELECT user_id, username, display_name, bio, created_at, status, role
+    SELECT user_id, username, display_name, bio, avatar_id, created_at, status, role
     FROM users
     WHERE user_id = :uid
     LIMIT 1
@@ -52,7 +74,7 @@ if (!$profileUser || $profileUser['status'] !== 'active') {
 
 $isOwner = $user && ((int)$user['user_id'] === $profileId);
 
-// handle bio update (only owner)
+// handle bio + avatar update (only owner)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner) {
   $bio = trim($_POST['bio'] ?? '');
 
@@ -62,17 +84,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isOwner) {
     $errors[] = 'Bio was too long and has been truncated to 1000 characters.';
   }
 
+  // avatar choice (either one of the preset paths, or empty to clear)
+  $avatarChoice = trim($_POST['avatar_choice'] ?? '');
+  if ($avatarChoice === '' || !array_key_exists($avatarChoice, $AVATARS)) {
+    // if not valid, keep existing avatar
+    $avatarChoice = $profileUser['avatar_id'] ?? null;
+  }
+
   try {
-    $stmt = $conn->prepare("UPDATE users SET bio = :bio WHERE user_id = :uid");
+    $stmt = $conn->prepare("
+      UPDATE users
+      SET bio = :bio,
+          avatar_id = :avatar
+      WHERE user_id = :uid
+    ");
     $stmt->execute([
-      ':bio' => $bio,
-      ':uid' => $profileId
+      ':bio'    => $bio,
+      ':avatar' => $avatarChoice,
+      ':uid'    => $profileId,
     ]);
-    $info[] = 'Your bio has been updated.';
+    $info[] = 'Your profile has been updated.';
+
     // refresh the profile data
     $profileUser = loadProfileUser($conn, $profileId);
+
+    // keep session in sync so nav shows new avatar
+    if ($isOwner) {
+      $_SESSION['user']['bio']       = $profileUser['bio'];
+      $_SESSION['user']['avatar_id'] = $profileUser['avatar_id'];
+    }
   } catch (PDOException $e) {
-    $errors[] = 'Failed to update bio. Please try again.';
+    $errors[] = 'Failed to update profile. Please try again.';
   }
 }
 
@@ -121,6 +163,12 @@ try {
 // display name for profile
 $profileDisplay = $profileUser['display_name'] ?: $profileUser['username'];
 $joined = $profileUser['created_at'] ? date('M j, Y', strtotime($profileUser['created_at'])) : null;
+$profileAvatar = $profileUser['avatar_id'] ?? null;
+$profileAvatarUrl = avatar_url($profileAvatar);
+
+// logged-in user's avatar for nav
+$navAvatar = $user['avatar_id'] ?? null;
+$navAvatarUrl = avatar_url($navAvatar);
 ?>
 <!doctype html>
 <html lang="en">
@@ -158,6 +206,9 @@ $joined = $profileUser['created_at'] ? date('M j, Y', strtotime($profileUser['cr
     <div class="nav-right">
       <?php if ($user): ?>
         <a class="pill" href="profile.php?id=<?= (int)$user['user_id'] ?>">
+          <?php if ($navAvatarUrl): ?>
+            <img src="<?= e($navAvatarUrl) ?>" alt="Avatar" class="nav-avatar">
+          <?php endif; ?>
           <?= e($user['display_name'] ?? $user['username']) ?> (<?= e($user['role']) ?>)
         </a>
         <a class="btn-outline" href="logout.php">Log out</a>
@@ -169,10 +220,13 @@ $joined = $profileUser['created_at'] ? date('M j, Y', strtotime($profileUser['cr
   </nav>
 
   <main>
-    <!-- Profile header + edit button -->
     <section class="profile-header">
       <div class="avatar-circle">
-        <?= e(strtoupper(mb_substr($profileDisplay, 0, 1, 'UTF-8'))) ?>
+        <?php if ($profileAvatarUrl): ?>
+          <img src="<?= e($profileAvatarUrl) ?>" alt="Profile picture">
+        <?php else: ?>
+          <?= e(strtoupper(mb_substr($profileDisplay, 0, 1, 'UTF-8'))) ?>
+        <?php endif; ?>
       </div>
       <div class="profile-main">
         <h1><?= e($profileDisplay) ?></h1>
@@ -189,18 +243,17 @@ $joined = $profileUser['created_at'] ? date('M j, Y', strtotime($profileUser['cr
 
         <?php if ($isOwner): ?>
           <button id="editBioBtn" class="btn" style="<?= $showEdit ? 'display:none;' : 'margin-top:.75rem;' ?>">
-            Click here to edit your bio
+            Edit profile
           </button>
         <?php endif; ?>
       </div>
     </section>
 
-    <!-- Hidden/visible edit form (owner only) -->
     <?php if ($isOwner): ?>
       <section id="editBioForm"
                class="edit-bio-card card"
                style="<?= $showEdit ? '' : 'display:none;' ?>">
-        <h2 style="margin-top:0;">Edit Your Bio</h2>
+        <h2 style="margin-top:0;">Edit Profile</h2>
 
         <?php if ($info): ?>
           <div class="card" style="background:#ecfdf3;border:1px solid #bbf7d0;margin-bottom:.75rem;">
@@ -228,19 +281,37 @@ $joined = $profileUser['created_at'] ? date('M j, Y', strtotime($profileUser['cr
             <textarea id="bio" name="bio" rows="4" maxlength="1000"
                       placeholder="Write a short bio about you and your cats..."><?= e($profileUser['bio'] ?? '') ?></textarea>
           </div>
+
+          <div class="form-group">
+            <label>Profile picture</label>
+            <div class="avatar-grid" id="avatarGrid">
+              <?php foreach ($AVATARS as $path => $label): ?>
+                <?php $isCurrent = ($profileAvatar === $path); ?>
+                <label class="avatar-option<?= $isCurrent ? ' selected' : '' ?>">
+                  <input
+                    type="radio"
+                    name="avatar_choice"
+                    value="<?= e($path) ?>"
+                    <?= $isCurrent ? 'checked' : '' ?>
+                  >
+                  <img src="<?= e($path) ?>" alt="<?= e($label) ?>">
+                  <span><?= e($label) ?></span>
+                </label>
+              <?php endforeach; ?>
+            </div>
+          </div>
+
           <button class="btn" type="submit">Save Changes</button>
           <button type="button" id="cancelEditBtn" class="btn-outline">Cancel</button>
         </form>
       </section>
     <?php endif; ?>
 
-    <!-- Tabs -->
     <div class="tabs">
       <button class="tab-link active" data-tab="posts">Posts (<?= count($posts) ?>)</button>
       <button class="tab-link" data-tab="comments">Comments (<?= count($comments) ?>)</button>
     </div>
 
-    <!-- Posts tab -->
     <section id="tab-posts" class="tab-panel active">
       <?php if (!$posts): ?>
         <div class="card empty">
@@ -266,7 +337,6 @@ $joined = $profileUser['created_at'] ? date('M j, Y', strtotime($profileUser['cr
       <?php endif; ?>
     </section>
 
-    <!-- Comments tab -->
     <section id="tab-comments" class="tab-panel">
       <?php if (!$comments): ?>
         <div class="card empty">
@@ -308,7 +378,6 @@ $joined = $profileUser['created_at'] ? date('M j, Y', strtotime($profileUser['cr
       });
     });
 
-    // Show/hide the bio edit form
     const editBtn = document.getElementById('editBioBtn');
     const editForm = document.getElementById('editBioForm');
     const cancelBtn = document.getElementById('cancelEditBtn');
@@ -328,7 +397,19 @@ $joined = $profileUser['created_at'] ? date('M j, Y', strtotime($profileUser['cr
         editBtn.style.display = 'inline-block';
       });
     }
+
+    const avatarGrid = document.getElementById('avatarGrid');
+    if (avatarGrid) {
+      avatarGrid.addEventListener('change', function(e) {
+        if (e.target && e.target.name === 'avatar_choice') {
+          document.querySelectorAll('.avatar-option').forEach(opt => {
+            opt.classList.remove('selected');
+          });
+          const label = e.target.closest('.avatar-option');
+          if (label) label.classList.add('selected');
+        }
+      });
+    }
   </script>
 </body>
 </html>
-

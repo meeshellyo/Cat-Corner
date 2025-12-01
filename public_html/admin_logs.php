@@ -10,7 +10,6 @@ require_once "database.php";
 $conn = Database::dbConnect();
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-/* ---- auth ---- */
 $user = $_SESSION['user'] ?? null;
 if (!$user) { header('Location: ./login.php'); exit; }
 $role = $user['role'] ?? 'registered';
@@ -20,14 +19,11 @@ if ($role !== 'admin') {
   exit;
 }
 
-/* ---- helper ---- */
 function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
-/* ---- optional filters ---- */
 $actFilter = isset($_GET['action']) && in_array($_GET['action'], ['approved','rejected'], true) ? $_GET['action'] : null;
 $whereSql  = $actFilter ? "WHERE l.`action` = :act" : "";
 
-/* ---- counts for header ---- */
 $counts = ['approved' => 0, 'rejected' => 0, 'total' => 0];
 try {
   $cstmt = $conn->query("SELECT `action`, COUNT(*) AS c FROM moderation_log GROUP BY `action`");
@@ -38,7 +34,6 @@ try {
   }
 } catch (Throwable $t) { /* ignore */ }
 
-/* ---- get logs ---- */
 $sql = "
   SELECT
     l.log_id,
@@ -97,13 +92,14 @@ $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <div class="nav-right">
       <?php if ($user): ?>
-        <span class="pill">
+        <a class="pill" href="profile.php?id=<?= (int)$user['user_id'] ?>">
           <?= e($user['display_name'] ?? $user['username']) ?> (<?= e($user['role']) ?>)
-        </span>
+        </a>
         <a class="btn-outline" href="logout.php">Log out</a>
       <?php else: ?>
         <a class="btn-outline" href="login.php">Sign in</a>
       <?php endif; ?>
+      <a href="about_us.php" class="nav-link">About Us</a>
     </div>
   </nav>
 
@@ -131,7 +127,10 @@ $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <?php if (!$logs): ?>
-      <div class="card empty"><strong>Nothing here yet.</strong> No moderation actions<?= $actFilter ? " for “".e($actFilter)."”" : "" ?>.</div>
+      <div class="card empty">
+        <strong>Nothing here yet.</strong>
+        No moderation actions<?= $actFilter ? " for “".e($actFilter)."”" : "" ?>.
+      </div>
     <?php else: ?>
       <div class="log-table-wrapper">
         <table class="mod-log-table">
@@ -147,18 +146,26 @@ $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
           <tbody>
             <?php foreach ($logs as $log): ?>
               <?php
-                $name  = trim((string)($log['mod_name'] ?? ''));
-                $mrole = $log['mod_role'] ?? null;
+                $name   = trim((string)($log['mod_name'] ?? ''));
+                $mrole  = $log['mod_role'] ?? null;
                 $initial = $name !== '' ? mb_strtoupper(mb_substr($name, 0, 1)) : '•';
-                $act = strtolower((string)$log['act']);
+                $act    = strtolower((string)$log['act']);
               ?>
               <tr>
                 <td>
                   <div style="display:flex;align-items:center;gap:.5rem;">
                     <span class="avatar"><?= e($initial) ?></span>
                     <div>
-                      <div><?= e($name ?: '[deleted user]') ?></div>
-                      <div class="muted"><?= $mrole ? 'role: '.e($mrole) : 'role: unknown' ?></div>
+                      <?php if (!empty($log['moderator_id'])): ?>
+                        <a href="profile.php?id=<?= (int)$log['moderator_id'] ?>">
+                          <?= e($name ?: '[deleted user]') ?>
+                        </a>
+                      <?php else: ?>
+                        <span class="muted">[deleted user]</span>
+                      <?php endif; ?>
+                      <div class="muted">
+                        <?= $mrole ? 'role: '.e($mrole) : 'role: unknown' ?>
+                      </div>
                     </div>
                   </div>
                 </td>

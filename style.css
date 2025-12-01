@@ -611,23 +611,245 @@ table.mod-log-table { width: 100%; border-collapse: collapse; }
 .post-card .card-body {
   padding: 0;
 }
-
-/* Image link that sits UNDER the title */
+/* (optional) post-card image rules for the home page */
 .post-card .media-top {
   display: block;
-  text-align: center;      /* center the image */
-  margin: 8px 0 10px;      /* space above/below the image */
-  background: transparent; /* no grey bar */
+  text-align: center;
+  margin: 8px 0 10px;
+  background: transparent;
   padding: 0;
 }
-
-/* Smaller, full, non-cropped preview */
 .post-card .media-top img {
   display: inline-block;
-  max-width: 260px;        /* tweak for bigger/smaller */
+  max-width: 260px;
   max-height: 260px;
   width: auto;
   height: auto;
   border-radius: 10px;
-  object-fit: contain;     /* show whole image */
+  object-fit: contain;
 }
+
+/* My Reviews layout + pills */
+.review-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+.badge { background:#fff3cd; color:#7f5d00; padding:.15rem .5rem; border-radius:999px; font-size:.85rem; border:1px solid #ffe8a1; }
+.review-list { display:grid; grid-template-columns:1fr; gap:.75rem; margin-top:.75rem; }
+@media (min-width: 900px) { .review-list { grid-template-columns:1fr 1fr; } }
+.meta { color:#666; font-size:.9rem; margin:.25rem 0 .5rem; }
+
+.pill-status { padding:.05rem .45rem; border-radius:999px; border:1px solid #e0e0e0; font-size:.8rem; margin-left:.35rem; }
+.pill-flagged  { background:#fff4e5; color:#7a3a12; border-color:#fed7aa; } /* orange */
+.pill-pending  { background:#e6f0ff; color:#0b3a7a; border-color:#cbddff; }
+.pill-underreview { background:#f3f4ff; color:#3730a3; border-color:#e0e7ff; }
+
+.section-head { display:flex; align-items:center; gap:.5rem; margin-top:1.25rem; }
+.kind-pill { font-size:.75rem; padding:.1rem .45rem; border-radius:6px; border:1px solid #e5e7eb; background:#fff; }
+
+.media-note {
+  display:inline-block;
+  margin-top:.25rem;
+  font-size:.85rem;
+  color:#2563eb;
+}
+
+.flag-source-note {
+  font-size:.8rem;
+  color:#92400e;
+  margin-top:.25rem;
+}
+
+    .mod-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+    .badge { background:#fee2e2; color:#7f1d1d; padding:.15rem .5rem; border-radius:999px; font-size:.85rem; border:1px solid #fecaca; }
+    .review-list { display:grid; grid-template-columns:1fr; gap:.75rem; margin-top:.75rem; }
+    @media (min-width: 1000px) { .review-list { grid-template-columns:1fr 1fr; } }
+    .meta { color:#666; font-size:.9rem; margin:.25rem 0 .5rem; }
+    .pill-status { padding:.05rem .45rem; border-radius:999px; border:1px solid #e5e7eb; font-size:.8rem; margin-left:.35rem; }
+    .pill-flagged { background:#fee2e2; color:#7f1d1d; border-color:#fecaca; }
+    .pill-pending { background:#e0f2fe; color:#075985; border-color:#bae6fd; }
+    .btn-soft { border-radius:999px; padding:.3rem .7rem; border:1px solid #e5e7eb; background:#f9fafb; font-size:.85rem; cursor:pointer; }
+    .btn-approve { background:#ecfdf3; border-color:#bbf7d0; }
+    .btn-reject { background:#fef2f2; border-color:#fecaca; }
+    .muted-note { color:#6b7280; font-size:.85rem; margin-top:.4rem; }
+    .section-head { display:flex; align-items:center; gap:.5rem; margin-top:1.25rem; }
+    .sub { margin-top:.25rem; color:#666; }
+    .kind-pill { font-size:.75rem; padding:.1rem .45rem; border-radius:6px; border:1px solid #e5e7eb; background:#fff; }
+    .reason { width:100%; max-width:420px; border:1px solid #e5e7eb; border-radius:8px; padding:.35rem .5rem; }
+
+
+/* === Moderation Queue Layout === */
+
+.mod-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Big tabs for Posts / Comments */
+.mod-kind-tabs {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.mod-kind-btn {
+  flex: 0 0 auto;
+  padding: 0.55rem 1.3rem;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+              transform 0.05s ease;
+}
+
+.mod-kind-btn:hover {
+  background: #f3f4f6;
+  transform: translateY(-1px);
+}
+
+.mod-kind-btn.active {
+  background: #fff7ed;      /* soft orange */
+  border-color: #fdba74;
+  color: #7c2d12;
+}
+
+/* Filter dropdown under tabs (for posts) */
+.mod-filter-form {
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mod-filter-label {
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.mod-filter-select {
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+/* Cards grid */
+.review-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 900px) {
+  .review-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Meta line under titles */
+.meta {
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+/* Status pills */
+.pill-status {
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
+  font-size: 0.8rem;
+  margin-left: 0.35rem;
+}
+
+.pill-flagged {
+  background: #fff4e5;
+  color: #7a3a12;
+  border-color: #fed7aa;
+}
+
+.pill-pending {
+  background: #e6f0ff;
+  color: #0b3a7a;
+  border-color: #cbddff;
+}
+
+.pill-underreview {
+  background: #f3f4ff;
+  color: #3730a3;
+  border-color: #e0e7ff;
+}
+
+/* Signals line: "Signals: Trigger words ×2 · User reports ×3" */
+.signal-line {
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin-top: 0.25rem;
+}
+
+
+.reason {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.25rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  font-size: 0.85rem;
+}
+
+.btn-soft {
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn-soft.btn-approve {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.btn-soft.btn-reject {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.btn-soft:hover {
+  filter: brightness(0.97);
+}
+
+/* Small grey note (e.g., "You can't approve your own post.") */
+.muted-note {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-top: 0.35rem;
+}
+
+.mod-actions {
+  display: flex;
+  flex-direction: row;        /* horizontal */
+  justify-content: flex-end;  /* push to the right */
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.mod-actions .inline {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+}
+
+

@@ -44,7 +44,10 @@ $userRole = $loggedIn ? ($user['role'] ?? 'registered') : 'guest';
 
     <div class="nav-right">
       <?php if ($loggedIn): ?>
-        <span class="pill"><?= htmlspecialchars($user['display_name'] ?? $user['username']) ?> (<?= htmlspecialchars($userRole) ?>)</span>
+      <a class="pill" href="profile.php?id=<?= (int)$user['user_id'] ?>">
+        <?= htmlspecialchars($user['display_name'] ?? $user['username']) ?> (<?= htmlspecialchars($userRole) ?>)
+      </a>
+
         <a class="btn-outline" href="logout.php">Log out</a>
       <?php else: ?>
         <a class="btn-outline" href="login.php">Sign in</a>
@@ -52,8 +55,6 @@ $userRole = $loggedIn ? ($user['role'] ?? 'registered') : 'guest';
       <a href="about_us.php" class="nav-link">About Us</a>
     </div>
   </nav>
-
-  
 
   <main>
     <div class="about-container">

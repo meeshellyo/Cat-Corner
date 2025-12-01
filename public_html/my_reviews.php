@@ -1,5 +1,5 @@
 <?php
-// my_reviews.php 
+// my_reviews.php — your posts & comments that are in review
 declare(strict_types=1);
 session_start();
 
@@ -7,14 +7,12 @@ ini_set('display_errors', '1');
 error_reporting(E_ALL);
 
 require_once "database.php";
-$conn = Database::dbConnect();
-$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
 $user = $_SESSION['user'] ?? null;
 if (!$user) {
-  header('Location: ./login.php'); 
+  header('Location: ./login.php');
   exit;
 }
 
@@ -22,10 +20,49 @@ $userId = (int)$user['user_id'];
 $role   = $user['role'] ?? 'registered';
 
 $errors   = [];
-$posts    = [];
-$comments = [];
+$info     = [];
 
-// User's POSTS in review (pending or flagged) + latest open flag per post
+$conn = Database::dbConnect();
+$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $action = $_POST['action'] ?? '';
+
+  if ($action === 'delete_comment') {
+    $cid = (int)($_POST['comment_id'] ?? 0);
+
+    if ($cid > 0) {
+      try {
+        // Delete ONLY if the comment belongs to this user
+        $del = $conn->prepare("
+          UPDATE comment
+          SET content_status = 'deleted'
+          WHERE comment_id = :cid
+            AND user_id = :uid
+            AND content_status = 'flagged'
+        ");
+        $del->execute([
+          ':cid' => $cid,
+          ':uid' => $userId
+        ]);
+
+        if ($del->rowCount() > 0) {
+          $info[] = "Comment #{$cid} deleted.";
+        } else {
+          $errors[] = "You can only delete your own flagged comments.";
+        }
+      } catch (Throwable $t) {
+        $errors[] = "Failed to delete that comment.";
+      }
+    }
+
+    header('Location: my_reviews.php');
+    exit;
+  }
+}
+
+
+$posts = [];
 try {
   $stmt = $conn->prepare("
     SELECT
@@ -39,9 +76,12 @@ try {
       f.trigger_source,
       f.trigger_word,
       f.trigger_hits,
-      f.created_at AS flagged_at
+      f.created_at AS flagged_at,
+      m.has_pending_media
     FROM post p
     LEFT JOIN main_category mc ON mc.main_category_id = p.main_category_id
+
+    -- latest flag row per post (if any)
     LEFT JOIN (
       SELECT f.*
       FROM flag f
@@ -53,8 +93,20 @@ try {
       ) x ON x.post_id = f.post_id AND x.max_created = f.created_at
       WHERE f.status = 'flagged'
     ) f ON f.post_id = p.post_id
+
+    -- any media needing review for this post
+    LEFT JOIN (
+      SELECT post_id, 1 AS has_pending_media
+      FROM media
+      WHERE moderation_status = 'pending'
+      GROUP BY post_id
+    ) m ON m.post_id = p.post_id
+
     WHERE p.user_id = :uid
-      AND p.content_status IN ('pending','flagged')
+      AND (
+        p.content_status IN ('pending','flagged')
+        OR m.has_pending_media IS NOT NULL
+      )
     ORDER BY p.created_at DESC
     LIMIT 200
   ");
@@ -64,7 +116,7 @@ try {
   $errors[] = 'Failed to load your in-review posts.';
 }
 
-// User's COMMENTS in review (flagged only; no flags table for comments)
+$comments = [];
 try {
   $cstmt = $conn->prepare("
     SELECT
@@ -98,18 +150,6 @@ $totalItems = count($posts) + count($comments);
   <meta charset="utf-8">
   <title>Currently in Review — Cat Corner</title>
   <link rel="stylesheet" href="css/style.css" type="text/css">
-  <style>
-    .review-head { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
-    .badge { background:#fff3cd; color:#7f5d00; padding:.15rem .5rem; border-radius:999px; font-size:.85rem; border:1px solid #ffe8a1; }
-    .review-list { display:grid; grid-template-columns:1fr; gap:.75rem; margin-top:.75rem; }
-    @media (min-width: 900px) { .review-list { grid-template-columns:1fr 1fr; } }
-    .meta { color:#666; font-size:.9rem; margin:.25rem 0 .5rem; }
-    .pill-status { padding:.05rem .45rem; border-radius:999px; border:1px solid #e0e0e0; font-size:.8rem; margin-left:.35rem; }
-    .pill-flagged { background:#ffe3cf; color:#6b3d10; border-color:#ffd1b0; }
-    .pill-pending { background:#e6f0ff; color:#0b3a7a; border-color:#cbddff; }
-    .section-head { display:flex; align-items:center; gap:.5rem; margin-top:1.25rem; }
-    .kind-pill { font-size:.75rem; padding:.1rem .45rem; border-radius:6px; border:1px solid #e5e7eb; background:#fff; }
-  </style>
 </head>
 <body>
   <nav class="nav" role="navigation" aria-label="Main">
@@ -157,7 +197,17 @@ $totalItems = count($posts) + count($comments);
       <span class="kind-pill">Posts: <?= count($posts) ?></span>
       <span class="kind-pill">Comments: <?= count($comments) ?></span>
     </div>
-    <p class="sub">These are your posts (pending/flagged) and your comments (flagged) that are awaiting review.</p>
+    <p class="sub">These are your posts and your comments that are awaiting review.</p>
+
+    <?php if ($info): ?>
+      <div class="card" style="background:#ecfdf3;border:1px solid #bbf7d0;margin-bottom:.75rem;">
+        <ul style="margin:.5rem 1rem;">
+          <?php foreach ($info as $msg): ?>
+            <li><?= e($msg) ?></li>
+          <?php endforeach; ?>
+        </ul>
+      </div>
+    <?php endif; ?>
 
     <?php if ($errors): ?>
       <div class="card error-card">
@@ -177,19 +227,18 @@ $totalItems = count($posts) + count($comments);
       <div class="review-list">
         <?php foreach ($posts as $r): ?>
           <?php
-            $created = date('M j, Y g:i a', strtotime($r['created_at']));
-            $excerpt = mb_strimwidth((string)$r['body'], 0, 280, '…');
-            $status  = $r['content_status'];
+            $created  = date('M j, Y g:i a', strtotime($r['created_at']));
+            $excerpt  = mb_strimwidth((string)$r['body'], 0, 280, '…');
+            $status   = $r['content_status'];
+            $hasMedia = !empty($r['has_pending_media']);
           ?>
           <article class="card">
             <h3 style="margin-top:0;">
               <a href="post.php?id=<?= (int)$r['post_id'] ?>" target="_blank">
                 <?= e($r['title'] ?: '[no title]') ?>
               </a>
-              <?php if ($status === 'flagged'): ?>
-                <span class="pill-status pill-flagged">flagged</span>
-              <?php elseif ($status === 'pending'): ?>
-                <span class="pill-status pill-pending">pending</span>
+              <?php if ($status === 'flagged' || $status === 'pending' || $hasMedia): ?>
+                <span class="pill-status pill-soft-review">In review</span>
               <?php endif; ?>
             </h3>
             <div class="meta">
@@ -197,10 +246,15 @@ $totalItems = count($posts) + count($comments);
               <?php if (!empty($r['main_slug'])): ?>
                 · in <a href="index.php?main=<?= e($r['main_slug']) ?>"><?= e($r['main_name'] ?? 'Category') ?></a>
               <?php endif; ?>
+
               <?php if (!empty($r['trigger_word'])): ?>
                 · trigger: “<?= e($r['trigger_word']) ?>”
               <?php elseif (!empty($r['trigger_source'])): ?>
                 · source: <?= e($r['trigger_source']) ?>
+              <?php endif; ?>
+
+              <?php if ($hasMedia): ?>
+                · media under review
               <?php endif; ?>
             </div>
             <p><?= e($excerpt) ?></p>
@@ -232,13 +286,13 @@ $totalItems = count($posts) + count($comments);
             $postId   = (int)$c['post_id'];
             $cid      = (int)$c['comment_id'];
           ?>
-          <article class="card">
+          <article class<?php echo "card"; ?>>
             <h3 style="margin-top:0;">
               <a href="post.php?id=<?= $postId ?>#comment-<?= $cid ?>" target="_blank">
                 in: <?= e($c['post_title'] ?: 'post') ?>
               </a>
               <?php if ($cStatus === 'flagged'): ?>
-                <span class="pill-status pill-flagged">flagged</span>
+                <span class="pill-status pill-soft-review">In review</span>
               <?php endif; ?>
             </h3>
             <div class="meta">
@@ -248,6 +302,15 @@ $totalItems = count($posts) + count($comments);
               <?php endif; ?>
             </div>
             <p><?= e($cExcerpt) ?></p>
+
+            <div class="mod-actions">
+              <form method="post" class="inline"
+                    onsubmit="return confirm('Delete this comment? This cannot be undone.');">
+                <input type="hidden" name="action" value="delete_comment">
+                <input type="hidden" name="comment_id" value="<?= $cid ?>">
+                <button type="submit" class="btn-soft btn-reject">Delete</button>
+              </form>
+            </div>
           </article>
         <?php endforeach; ?>
       </div>

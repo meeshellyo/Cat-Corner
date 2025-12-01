@@ -12,7 +12,23 @@ $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $errors = []; // to catch errors in creating an account
 
-//check email
+// default values so we can repopulate the form after an error
+$username     = '';
+$email        = '';
+$password     = '';
+$confirm_pw   = '';
+$display_name = '';
+
+// load bad words from text file
+$badWords = [];
+$badWordsFile = __DIR__ . '/bad_words.txt'; 
+
+if (is_readable($badWordsFile)) {
+    $badWords = file($badWordsFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    // normalize to lowercase
+    $badWords = array_map('mb_strtolower', $badWords);
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username     = trim($_POST['username'] ?? '');
     $email        = trim($_POST['email'] ?? '');
@@ -21,21 +37,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $display_name = trim($_POST['display_name'] ?? '');
 
     // basic acc validation
-    // user must be 3-50 characters; a-z,#,_,. only
+    // username must be 3-50 characters; a-z, 0-9, _, . only
     if ($username === '' || !preg_match('/^[A-Za-z0-9_.]{3,50}$/', $username)) {
         $errors[] = 'Username must be 3–50 chars (letters, numbers, underscore, dot).';
+    } else {
+        // bad-word check on username (case-insensitive substring)
+        $lowerUser = mb_strtolower($username);
+
+        foreach ($badWords as $bad) {
+            $bad = trim($bad);
+            if ($bad === '') {
+                continue;
+            }
+            if (mb_stripos($lowerUser, $bad) !== false) {
+                $errors[] = 'Bad username.  Does not pass our trigger words';
+                break;
+            }
+        }
     }
-    if ($email === '' || strpos($email, '@') === false) {
-        $errors[] = 'email must have @'; //need to check *@*.*
+
+    // email must contain @ and .
+    if (
+        $email === '' || strpos($email, '@') === false ||strpos($email, '.') === false) {
+        $errors[] = 'Email must contain both "@" and "."';
     }
-    // atleast 12 char
+
+    // at least 12 chars
     if ($password !== '' && strlen($password) < 12) {
         $errors[] = 'Password must be at least 12 characters.';
     }
+
     // pass must match
     if ($password !== $confirm_pw) {
         $errors[] = 'Passwords don\'t match';
     }
+
     if ($display_name !== '' && mb_strlen($display_name) > 100) {
         $errors[] = 'Display name is too long.';
     }
@@ -43,28 +79,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$errors) {
         try {
             $hash = password_hash($password, PASSWORD_DEFAULT);
+
             $sql = "INSERT INTO users (username, email, hashed_pass, display_name)
-                    VALUES (:u, :e, :h, :d)"; //prepare sql insert with plaeholders.  this protects against injections
+                    VALUES (:u, :e, :h, :d)";
+
             $stmt = $conn->prepare($sql);
-            // binding and executing
             $stmt->execute([
                 ':u' => $username,
                 ':e' => $email,
                 ':h' => $hash,
                 ':d' => ($display_name !== '' ? $display_name : null),
             ]);
-            session_regenerate_id(true); //if the inserts succeed it gets called before logging the user in
-            $_SESSION['user'] = [ // store a single user object
+
+            session_regenerate_id(true);
+            $_SESSION['user'] = [
                 'user_id'      => (int)$conn->lastInsertId(),
                 'username'     => $username,
                 'email'        => $email,
                 'role'         => 'registered',
                 'display_name' => $display_name,
             ];
+
             header('Location: ./index.php');
             exit;
         } catch (PDOException $e) {
-            if ($e->getCode() === '23000') { // 2300 is a class for integrity constraint violations
+            if ($e->getCode() === '23000') { // integrity constraint violations
                 $msg = $e->getMessage();
                 if (stripos($msg, 'username') !== false) {
                     $errors[] = 'That username is taken.';
@@ -74,9 +113,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $errors[] = 'Account could not be created.';
                 }
             } else {
-                // db error
                 $driverCode = $e->errorInfo[1] ?? 'n/a';
-                $errors[] = 'Unexpected error creating account. ';
+                $errors[] = 'Unexpected error creating account.';
             }
         }
     }
@@ -101,22 +139,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       // clear message if either is empty
       if (!pw.value || !cpw.value) {
         msg.textContent = "";
-        cpw.setCustomValidity(""); // validity reset
+        cpw.setCustomValidity("");
         return;
       }
 
       if (pw.value === cpw.value) {
         msg.style.color = "green";
         msg.textContent = "Passwords match!";
-        cpw.setCustomValidity(""); // valid
+        cpw.setCustomValidity("");
       } else {
         msg.style.color = "red";
         msg.textContent = "Passwords do NOT match!";
-        cpw.setCustomValidity("Passwords do not match"); // blocks form submit
+        cpw.setCustomValidity("Passwords do not match");
       }
     }
 
-    // runs passconfirm
     document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("password").addEventListener("input", passConfirm);
       document.getElementById("confirm-password").addEventListener("input", passConfirm);
@@ -142,27 +179,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <form method="post" action="create_user.php" autocomplete="off" class="form">
       <div class="form-group">
         <label for="username">Username</label>
-        <input id="username" name="username" required placeholder="Your Username">
+        <input
+          id="username"
+          name="username"
+          required
+          placeholder="Your Username"
+          value="<?= htmlspecialchars($username, ENT_QUOTES, 'UTF-8') ?>"
+        >
       </div>
 
       <div class="form-group">
         <label for="email">Email</label>
-        <input id="email" type="email" name="email" required placeholder="your@email.com">
+        <input
+          id="email"
+          type="email"
+          name="email"
+          required
+          placeholder="your@email.com"
+          value="<?= htmlspecialchars($email, ENT_QUOTES, 'UTF-8') ?>"
+        >
       </div>
 
       <div class="form-group">
         <label for="display_name">Display name</label>
-        <input id="display_name" name="display_name" placeholder="Optional">
+        <input
+          id="display_name"
+          name="display_name"
+          placeholder="Optional"
+          value="<?= htmlspecialchars($display_name, ENT_QUOTES, 'UTF-8') ?>"
+        >
       </div>
 
       <div class="form-group">
-        <label for="password">Password (Must be atleast 12 characters)</label>
-        <input id="password" type="password" name="password" onkeyup="passConfirm();" minlength="12" required placeholder="••••••••">
+        <label for="password">Password (Must be at least 12 characters)</label>
+        <input
+          id="password"
+          type="password"
+          name="password"
+          onkeyup="passConfirm();"
+          minlength="12"
+          required
+          placeholder="••••••••"
+        >
       </div>
 
       <div class="form-group">
         <label for="confirm-password">Confirm Password</label>
-        <input id="confirm-password" type="password" name="confirm-password" onkeyup="passConfirm();" required placeholder="••••••••">
+        <input
+          id="confirm-password"
+          type="password"
+          name="confirm-password"
+          onkeyup="passConfirm();"
+          required
+          placeholder="••••••••"
+        >
         <p id="message" aria-live="polite"></p>
       </div>
 
@@ -171,8 +241,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <p><a href="./login.php" class="link">Already have an account? Log in</a></p>
   </main>
+
+  <?php if ($errors): ?>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        alert("There were problems creating your account.");
+      });
+    </script>
+  <?php endif; ?>
 </body>
 </html>
-
 
 

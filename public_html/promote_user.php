@@ -18,7 +18,8 @@ $role = $user['role'] ?? 'guest';
 $conn = Database::dbConnect();
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-$info = ''; $errors = [];
+$info = ''; 
+$errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $username = trim($_POST['username'] ?? '');
@@ -27,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   // only allow these roles from this page
   $allowed = ['registered','moderator'];
 
-  if ($username === '')      $errors[] = 'please enter a username.';
+  if ($username === '')                $errors[] = 'please enter a username.';
   if (!in_array($role, $allowed, true)) $errors[] = 'invalid role.';
 
   if (!$errors) {
@@ -76,22 +77,23 @@ function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
 
       <?php if ($role === 'admin'): ?>
         <a href="admin_logs.php" class="nav-link">Admin Logs</a>
-        <a href="promote_user.php" class="nav-link">Promote Users</a>
+        <a href="promote_user.php" class="nav-link active">Promote Users</a>
       <?php endif; ?>
     </div>
 
-
     <div class="nav-right">
       <?php if ($user): ?>
-        <span class="pill">
+        <a class="pill" href="profile.php?id=<?= (int)$user['user_id'] ?>">
           <?= e($user['display_name'] ?? $user['username']) ?> (<?= e($user['role']) ?>)
-        </span>
+        </a>
         <a class="btn-outline" href="logout.php">Log out</a>
       <?php else: ?>
         <a class="btn-outline" href="login.php">Sign in</a>
       <?php endif; ?>
+      <a href="about_us.php" class="nav-link">About Us</a>
     </div>
   </nav>
+
   <main class="container">
     <h1>Set User Role</h1>
     <p class="sub">type a username and choose a role.</p>
@@ -99,8 +101,13 @@ function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8')
     <?php if ($info): ?>
       <div class="card" style="margin-bottom:1rem;"><?= e($info) ?></div>
     <?php endif; ?>
+
     <?php if ($errors): ?>
-      <ul class="error-list"><?php foreach ($errors as $e): ?><li><?= e($e) ?></li><?php endforeach; ?></ul>
+      <ul class="error-list">
+        <?php foreach ($errors as $er): ?>
+          <li><?= e($er) ?></li>
+        <?php endforeach; ?>
+      </ul>
     <?php endif; ?>
 
     <form method="post" action="promote_user.php" class="form" autocomplete="off">
