@@ -1,5 +1,5 @@
 <?php
-// vote_post.php — handles like/dislike
+// vote_post.php
 declare(strict_types=1);
 session_start();
 
@@ -15,6 +15,7 @@ if (!$user) {
 }
 $userId = (int)$user['user_id'];
 
+// read json payload from javascript
 $payload = json_decode(file_get_contents('php://input'), true) ?: [];
 $postId = isset($payload['post_id']) ? (int)$payload['post_id'] : 0;
 $val    = isset($payload['value']) ? (int)$payload['value'] : 0; // +1 or -1
@@ -28,8 +29,6 @@ if ($postId <= 0 || !in_array($val, [1, -1], true)) {
 try {
   $conn = Database::dbConnect();
   $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-  // Upsert: if same value, toggle off (remove); if different, update
   $stmt = $conn->prepare("SELECT value FROM post_vote WHERE post_id = :pid AND user_id = :uid");
   $stmt->execute([':pid' => $postId, ':uid' => $userId]);
   $cur = $stmt->fetchColumn();

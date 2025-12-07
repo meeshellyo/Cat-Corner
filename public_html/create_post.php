@@ -34,9 +34,10 @@ $mainCategories = [];
 $allSubcats     = [];
 
 try {
+  // loads all main categories for the dropdown box
     $stmt = $conn->query("SELECT main_category_id, name, slug FROM main_category ORDER BY name");
     $mainCategories = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-
+  // loads all sub categories to map to maincategory
     $stmt = $conn->query("
         SELECT subcategory_id, name, main_category_id
         FROM subcategory
@@ -44,9 +45,9 @@ try {
     ");
     $allSubcats = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (PDOException $e) {
-    // Optionally log error
 }
 
+// pre select a maincategory
 $prefillMainId = null;
 if (isset($_GET['main_id']) && ctype_digit($_GET['main_id'])) {
     $cand = (int)$_GET['main_id'];
@@ -63,6 +64,7 @@ if (isset($_GET['main_id']) && ctype_digit($_GET['main_id'])) {
     }
 }
 
+// handling bad words
 $LEXICON = [];
 $lexiconPath = __DIR__ . '/bad_words.txt';
 
@@ -75,7 +77,7 @@ if (is_file($lexiconPath)) {
     }
 }
 
-// substring matching now
+// substring matching 
 function scanLexicon(array $terms, string $text): array {
     if (!$terms) return [0, null];
 
@@ -164,14 +166,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         && is_array($_FILES['media'])
         && ($_FILES['media']['error'] !== UPLOAD_ERR_NO_FILE);
 
-    // -----------------------------------------
-    // ROLE-BASED CONTENT STATUS LOGIC
-    // -----------------------------------------
-    // Rules:
-    //  - Admin: post is always live (media or not, lex hits or not)
-    //  - Moderator / registered:
-    //       * if lexicon hits OR media => flagged (mod queue)
-    //       * else => live
     if ($role === 'admin') {
         $postStatus = 'live';
     } elseif ($lexHits > 0 || $mediaProvided) {
@@ -205,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $conn->beginTransaction();
 
-            // Insert post
+            // insert post
             $ins = $conn->prepare("
                 INSERT INTO post (user_id, main_category_id, title, body, content_status)
                 VALUES (:uid, :mid, :title, :body, :status)
@@ -219,7 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $postId = (int)$conn->lastInsertId();
 
-            // Insert subcategories
+            // insert subcategories
             if ($subIds) {
                 $ps = $conn->prepare("
                     INSERT IGNORE INTO post_subcategory (post_id, subcategory_id)
@@ -233,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            // Insert flag row if lexicon triggered (even if post is live)
+            // insert flag row if lexicon triggered
             if ($lexHits > 0) {
                 $flag = $conn->prepare("
                     INSERT INTO flag (post_id, trigger_source, trigger_hits, trigger_word, status)
@@ -246,7 +240,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             }
 
-            // Handle media upload
+            // handle media upload
             if ($mediaProvided && $incomingMime) {
                 $uploadsDir = __DIR__ . '/uploads';
                 if (!is_dir($uploadsDir) && !@mkdir($uploadsDir, 0757, true)) {
@@ -271,8 +265,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $errors[] = 'Could not save uploaded file.';
                     } else {
                         // ROLE-BASED MEDIA MODERATION STATUS
-                        // Admin media on a live post is auto-approved.
-                        // Everything else stays pending for review.
+                        // adnin media on a live post is auto-approved.
+                        // everything else stays pending for review.
                         $mediaModStatus = ($role === 'admin' && $postStatus === 'live')
                             ? 'approved'
                             : 'pending';
@@ -296,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 $conn->commit();
 
-                // Find main category slug for redirect
+                // fine main category slug for redirect
                 $mainSlug = '';
                 foreach ($mainCategories as $mc) {
                     if ((int)$mc['main_category_id'] === $mainId) {
@@ -443,6 +437,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   const mainSelect = document.getElementById('main_category_id');
   const subBox     = document.getElementById('subcatBox');
 
+  // render list of subcategories based on selected main category.
   function renderSubcats(mainId) {
     subBox.innerHTML = '';
     const list = SUB_BY_MAIN[String(mainId)] || [];

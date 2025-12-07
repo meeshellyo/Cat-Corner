@@ -2,7 +2,6 @@
 // mod_flags.php
 declare(strict_types=1);
 session_start();
-
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
@@ -31,6 +30,7 @@ if (!$isMod && !$isAdmin) {
   exit;
 }
 
+// decide whether posts or comments are being viewed on the queue
 $kind = ($_GET['kind'] ?? 'posts') === 'comments' ? 'comments' : 'posts';
 
 $allowedFilters = ['all','lexicon','media','user']; // for posts
@@ -39,7 +39,7 @@ if (!in_array($filter, $allowedFilters, true)) {
   $filter = 'all';
 }
 
-$allowedCommentFilters = ['all', 'lexicon', 'user'];
+$allowedCommentFilters = ['all', 'lexicon', 'user']; // for comments
 $commentFilter = $_GET['cfilter'] ?? 'all';
 if (!in_array($commentFilter, $allowedCommentFilters, true)) {
   $commentFilter = 'all';
@@ -50,6 +50,7 @@ $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $errors = [];
 
+// handles mod actions on posts
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $action = $_POST['action'] ?? '';
   $reason = trim((string)($_POST['reason'] ?? ''));
@@ -204,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   }
 
 
-  // IGNORE COMMENT (make live & clear flags)
+//  ignore comment (makes it live)
   if ($action === 'ignore_comment' && ($isMod || $isAdmin)) {
     $cid = (int)($_POST['comment_id'] ?? 0);
     $pid = (int)($_POST['post_id'] ?? 0);
@@ -341,6 +342,7 @@ if ($kind === 'posts') {
       $extraFilter = " AND m.has_pending_media IS NOT NULL ";
     }
 
+ // main query that get posts that are pending/flagged or have flags or pending media
     $sql = "
       SELECT
         p.post_id,
@@ -442,6 +444,7 @@ if ($kind === 'comments') {
       $commentExtraFilter = " AND cf.user_report_count > 0 ";
     }
 
+    // query for comments with comment-level flags
     $cstmt = $conn->prepare("
       SELECT
         c.comment_id,
@@ -595,7 +598,7 @@ function comment_filter_label(string $filter): string {
       <span class="badge"><?= $totalItems ?> items</span>
     </div>
 
-    <!-- Big tabs for Posts / Comments -->
+    <!-- big tabs for posts / comments -->
     <div class="mod-kind-tabs">
       <a
         href="mod_flags.php?kind=posts&filter=<?= e($filter) ?>"
@@ -608,7 +611,7 @@ function comment_filter_label(string $filter): string {
     </div>
 
     <?php if ($kind === 'posts'): ?>
-      <!-- Filter dropdown (only for posts) -->
+      <!-- filter dropdown (only for posts) -->
       <form method="get" class="mod-filter-form">
         <input type="hidden" name="kind" value="posts">
         <label for="filter" class="mod-filter-label">Filter</label>
@@ -622,7 +625,7 @@ function comment_filter_label(string $filter): string {
     <?php endif; ?>
 
     <?php if ($kind === 'comments'): ?>
-      <!-- Filter dropdown for comments -->
+      <!-- filter dropdown for comments -->
       <form method="get" class="mod-filter-form">
         <input type="hidden" name="kind" value="comments">
         <label for="cfilter" class="mod-filter-label">Filter</label>
@@ -651,7 +654,7 @@ function comment_filter_label(string $filter): string {
 
     <?php if ($kind === 'posts'): ?>
 
-      <!-- POSTS SECTION -->
+      <!-- posts section -->
       <div class="section-head">
         <h2 style="margin:0;">Posts Needing Review</h2>
         <span class="badge"><?= count($posts) ?></span>
@@ -797,7 +800,7 @@ function comment_filter_label(string $filter): string {
 
     <?php else: ?>
 
-      <!-- COMMENTS SECTION -->
+      <!-- comment section -->
       <div class="section-head">
         <h2 style="margin:0;">Comments Needing Review</h2>
         <span class="badge"><?= count($comments) ?></span>
@@ -897,13 +900,14 @@ function comment_filter_label(string $filter): string {
   </main>
 
   <script>
+    // prompts for leaving a note when approving a post
     function approvePostPrompt(form) {
       const note = prompt('Optional note for log (Approve). Leave blank for none:');
       if (note === null) return false;
       form.querySelector('input[name="reason"]').value = (note || '').trim();
       return true;
     }
-
+    // prompts for leaving a note when rejecting a post
     function rejectPostPrompt(form) {
       const note = prompt('Optional note for log (Reject). Leave blank for none:');
       if (note === null) return false;

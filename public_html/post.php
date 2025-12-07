@@ -342,7 +342,6 @@ $comments = $cmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- Nav -->
   <nav class="nav" role="navigation" aria-label="Main">
     <div class="nav-left">
       <a class="brand" href="index.php">
@@ -378,7 +377,6 @@ $comments = $cmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     </div>
   </nav>
 
-  <!-- Page -->
   <main class="container narrow post-page">
     <article class="card full-post">
       <header class="post-header">
@@ -477,7 +475,6 @@ $comments = $cmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
       </div>
     </article>
 
-    <!-- Comments -->
     <section class="comments">
       <h2>Comments</h2>
 

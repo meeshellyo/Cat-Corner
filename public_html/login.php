@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <h1>Login</h1>
 
-        <!-- show errors if any exist -->
+        <!-- show error if any exists -->
         <?php if ($errors): ?>
           <ul class="error-list">
             <?php foreach ($errors as $e): ?>

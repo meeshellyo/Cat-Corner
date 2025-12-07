@@ -13,20 +13,22 @@ function e(string $s): string {
   return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
 }
 
-function avatar_url(?string $id): ?string {
-  if (!$id) return null;
-  $id = trim($id);
-  if ($id === '') return null;
 
-  if (strpos($id, '/') !== false) {
-    return $id;
-  }
-  if (strpos($id, '.') === false) {
-    $id .= '.jpg';
-  }
-  return 'doodles/' . $id;
+function avatar_url(?string $id): ?string {
+    if (!$id) return null;
+
+    $id = trim($id);
+    if ($id === '') return null;
+
+    if (strpos($id, '.') === false) {
+        $id .= '.jpg';
+    }
+
+    return 'doodles/' . $id;
 }
 
+
+// preset pfp
 $AVATARS = [
   'doodles/derpcat.jpg'  => 'Derp Cat',
   'doodles/chillcat.jpg' => 'Chill Cat',

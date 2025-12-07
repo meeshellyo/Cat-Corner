@@ -2,7 +2,6 @@
 // index.php 
 declare(strict_types=1);
 session_start();
-
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
@@ -18,19 +17,14 @@ function e(string $s): string {
 
 function avatar_url(?string $id): ?string {
     if (!$id) return null;
+
     $id = trim($id);
     if ($id === '') return null;
 
-    if (strpos($id, '/') !== false) {
-        return $id;
-    }
-
-    if (strpos($id, '.') === false) {
-        $id .= '.jpg';
-    }
     return 'doodles/' . $id;
 }
 
+// sidebar categories
 $mainCategories = [];
 try {
     $q = $conn->query("SELECT main_category_id, name, slug FROM main_category ORDER BY name");
@@ -39,10 +33,12 @@ try {
     $mainCategories = [];
 }
 
+// current logged in user
 $user         = $_SESSION['user'] ?? null;
 $userId       = (int)($user['user_id'] ?? 0);
+
 $selectedMain = $_GET['main'] ?? 'home';
-$sort         = $_GET['sort'] ?? 'recent'; // recent|liked|tea
+$sort         = $_GET['sort'] ?? 'recent'; // the recent, liked, and tea
 
 $allowedSorts = ['recent','liked','tea'];
 if (!in_array($sort, $allowedSorts, true)) {
@@ -63,8 +59,10 @@ if ($selectedMain !== 'home') {
     }
 }
 
-$orderBy = "p.created_at DESC";
+// sorting from most recent, most liked, and most disliked
+$orderBy = "p.created_at DESC"; //default is newest
 
+// most liked
 if ($sort === 'liked') {
     $orderBy = "
       CASE
@@ -77,7 +75,7 @@ if ($sort === 'liked') {
       COALESCE(va.dislikes,0) ASC,
       p.created_at DESC
     ";
-} elseif ($sort === 'tea') {
+} elseif ($sort === 'tea') { //more dislikes than likes
     $orderBy = "
       (COALESCE(va.dislikes,0) - COALESCE(va.likes,0)) DESC,
       COALESCE(va.dislikes,0) DESC,
@@ -85,9 +83,12 @@ if ($sort === 'liked') {
     ";
 }
 
+// where clause for main feed
 $where  = "p.content_status = 'live'";
 $params = [':uid' => $userId];
-if ($selectedMain !== 'home') {
+
+// if a specific main cat is selected, restrict to what post are in that category
+if ($selectedMain !== 'home') { 
     $where .= " AND (p.main_category_id = :main_id
                   OR EXISTS (
                       SELECT 1
@@ -99,6 +100,7 @@ if ($selectedMain !== 'home') {
     $params[':main_id'] = $mainId;
 }
 
+// main query for posts, media, votes, and subcats!!
 $sql = "
 SELECT
   p.post_id,
@@ -155,7 +157,7 @@ try {
     $stmt->execute($params);
     $posts = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 } catch (Throwable $t) {
-    $posts = [];
+    $posts = []; 
 }
 
 $createHref = 'create_post.php';
@@ -223,7 +225,6 @@ function sort_link(string $sort, string $main): string {
   <div class="page">
     <div class="layout">
 
-      <!-- Sidebar -->
       <aside class="sidebar">
         <h2 class="sidebar-title">Categories</h2>
         <ul class="cat-list">
@@ -237,7 +238,6 @@ function sort_link(string $sort, string $main): string {
         </ul>
       </aside>
 
-      <!-- Feed -->
       <main class="feed">
         <h1><?= e($heading) ?></h1>
 
@@ -343,7 +343,7 @@ function sort_link(string $sort, string $main): string {
   </div>
 
   <script>
-    // Gate create-post for unauthenticated users
+    // gate create-post for unauthenticated users
     (function(){
       const isLoggedIn = <?= $isLoggedIn ?>;
       document.querySelectorAll('[data-requires-auth="true"]').forEach(a => {
@@ -357,7 +357,7 @@ function sort_link(string $sort, string $main): string {
       });
     })();
 
-    // Voting
+    // voting logic
     (function(){
       const isLoggedIn = <?= $isLoggedIn ?>;
       if (!isLoggedIn) return;

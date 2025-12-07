@@ -1,8 +1,7 @@
 <?php
-// my_reviews.php — your posts & comments that are in review
+// my_reviews.php 
 declare(strict_types=1);
 session_start();
-
 ini_set('display_errors', '1');
 error_reporting(E_ALL);
 
@@ -33,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($cid > 0) {
       try {
-        // Delete ONLY if the comment belongs to this user
+        // only delete if this comment belongs to the current user, is flagged
         $del = $conn->prepare("
           UPDATE comment
           SET content_status = 'deleted'
@@ -62,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 
+//loads the users posts in review
 $posts = [];
 try {
   $stmt = $conn->prepare("
@@ -116,6 +116,7 @@ try {
   $errors[] = 'Failed to load your in-review posts.';
 }
 
+// lods the users comment in review
 $comments = [];
 try {
   $cstmt = $conn->prepare("
@@ -215,7 +216,7 @@ $totalItems = count($posts) + count($comments);
       </div>
     <?php endif; ?>
 
-    <!-- POSTS -->
+    <!-- posts -->
     <div class="section-head">
       <h2 style="margin:0;">Your Posts</h2>
       <span class="badge"><?= count($posts) ?> in review</span>
@@ -268,7 +269,7 @@ $totalItems = count($posts) + count($comments);
       </div>
     <?php endif; ?>
 
-    <!-- COMMENTS -->
+    <!-- comments -->
     <div class="section-head">
       <h2 style="margin:0;">Your Comments</h2>
       <span class="badge"><?= count($comments) ?> in review</span>

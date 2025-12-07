@@ -1,9 +1,7 @@
 <?php
-// vote_post.php — handles like/dislike
+// vote_post.php 
 declare(strict_types=1);
 session_start();
-
-// Keep this endpoint JSON-only (no PHP warnings/HTML)
 ini_set('display_errors', '0');
 ini_set('display_startup_errors', '0');
 
@@ -46,7 +44,7 @@ try {
     $conn = Database::dbConnect();
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // Check existing vote
+    // check existing vote
     $stmt = $conn->prepare("
         SELECT value
         FROM post_vote
@@ -58,14 +56,14 @@ try {
     if ($cur !== false) {
         $cur = (int)$cur;
         if ($cur === $val) {
-            // Toggle off (remove vote)
+            // remove their vote 
             $del = $conn->prepare("
                 DELETE FROM post_vote
                 WHERE post_id = :pid AND user_id = :uid
             ");
             $del->execute([':pid' => $postId, ':uid' => $userId]);
         } else {
-            // Update to new value
+            // update their vote to the new vote
             $upd = $conn->prepare("
                 UPDATE post_vote
                 SET value = :v
@@ -74,7 +72,7 @@ try {
             $upd->execute([':v' => $val, ':pid' => $postId, ':uid' => $userId]);
         }
     } else {
-        // Insert new vote
+        // insert new vote
         $ins = $conn->prepare("
             INSERT INTO post_vote (post_id, user_id, value)
             VALUES (:pid, :uid, :v)
@@ -82,7 +80,7 @@ try {
         $ins->execute([':pid' => $postId, ':uid' => $userId, ':v' => $val]);
     }
 
-    // Return fresh tallies
+    // return fresh tallies
     $agg = $conn->prepare("
         SELECT
           SUM(value = 1)  AS likes,

@@ -10,6 +10,7 @@ require_once "database.php";
 $conn = Database::dbConnect();
 $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+// authentication 
 $user = $_SESSION['user'] ?? null;
 if (!$user) { header('Location: ./login.php'); exit; }
 $role = $user['role'] ?? 'registered';
@@ -21,19 +22,23 @@ if ($role !== 'admin') {
 
 function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
+// checks if a valid ?action exists, if filtering, append where clause
 $actFilter = isset($_GET['action']) && in_array($_GET['action'], ['approved','rejected'], true) ? $_GET['action'] : null;
 $whereSql  = $actFilter ? "WHERE l.`action` = :act" : "";
 
 $counts = ['approved' => 0, 'rejected' => 0, 'total' => 0];
 try {
+  // keeps track of how many logs belong to each action
   $cstmt = $conn->query("SELECT `action`, COUNT(*) AS c FROM moderation_log GROUP BY `action`");
   foreach ($cstmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
     $a = strtolower($r['action']);
+    // stores count in the correcr spot
     if (isset($counts[$a])) $counts[$a] = (int)$r['c'];
     $counts['total'] += (int)$r['c'];
   }
-} catch (Throwable $t) { /* ignore */ }
+} catch (Throwable $t) { }
 
+// SQL joins to pull moderator info and post titles.
 $sql = "
   SELECT
     l.log_id,
@@ -52,11 +57,14 @@ $sql = "
   ORDER BY l.created_at DESC
   LIMIT 200
 ";
+
 $stmt = $conn->prepare($sql);
 if ($actFilter) $stmt->bindValue(':act', $actFilter);
 $stmt->execute();
 $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

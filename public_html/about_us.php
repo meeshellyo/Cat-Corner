@@ -2,12 +2,12 @@
 // about_us.php
 declare(strict_types=1);
 session_start();
-
 require_once "database.php";
 
 $user = $_SESSION['user'] ?? null;
 $loggedIn = (bool)$user;
 $userRole = $loggedIn ? ($user['role'] ?? 'registered') : 'guest';
+
 ?>
 <!doctype html>
 <html lang="en">
